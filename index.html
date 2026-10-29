@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Рабочее пространство для разработки диалоговых агентов."
+    />
+    <title>dialogentis — конструктор диалоговых агентов</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"
+          ><svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <path d="M7 4H4v16h3M17 4h3v16h-3M9 9l3 3-3 3M14 16h2" /></svg
+        ></span>
+        <div class="project-name">
+          <strong>dialogentis</strong
+          ><small>Агенты анализа текста и чат-боты</small>
+        </div>
+      </div>
+      <span id="connection-status" class="connection-status">Подключение…</span>
+    </header>
+    <div id="demo-banner" class="demo-banner" hidden>
+      <strong>Просмотр интерфейса</strong
+      ><span
+        >Сервер не подключён. Изменения сохраняются только в этом браузере;
+        обучение и чат недоступны.</span
+      ><button id="reconnect" class="text-button">Проверить подключение</button>
+    </div>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Агенты">
+        <div class="aside-head">
+          <h2>Ваши агенты <span id="agent-count">0</span></h2>
+          <button
+            id="new"
+            class="icon"
+            title="Создать агента"
+            aria-label="Создать агента"
+          >
+            +
+          </button>
+        </div>
+        <div id="agents" class="agents-list">
+          <p class="list-loading">Загрузка агентов…</p>
+        </div>
+        <div class="aside-foot">
+          <strong>От идеи до диалога</strong>
+          <p>Добавьте примеры, задайте поведение и проверьте ответы.</p>
+        </div>
+      </aside>
+      <section class="workspace">
+        <div id="empty" class="empty">
+          <div class="empty-symbol" aria-hidden="true">&lt;/&gt;</div>
+          <h1>Создайте первого агента</h1>
+          <p>Начните с намерений и примеров пользовательских фраз.</p>
+          <button onclick="document.getElementById('new').click()">
+            Создать агента
+          </button>
+        </div>
+        <div id="editor" hidden>
+          <div class="topline">
+            <div>
+              <div class="breadcrumb">Агенты / <span id="crumb"></span></div>
+              <div class="title-row">
+                <h1 id="title"></h1>
+                <span id="agent-status" class="status-badge"></span>
+              </div>
+              <p id="agent-description" class="muted"></p>
+            </div>
+            <div class="top-actions">
+              <span id="save-state" class="save-state">Изменения сохранены</span
+              ><button id="save">Сохранить</button>
+              <details class="agent-menu">
+                <summary aria-label="Действия с агентом">···</summary>
+                <button id="delete" class="danger">Удалить агента</button>
+              </details>
+            </div>
+          </div>
+          <nav class="tabs" aria-label="Разделы агента">
+            <button data-tab="settings" class="active" aria-selected="true">
+              Редактор</button
+            ><button data-tab="training" aria-selected="false">Обучение</button
+            ><button data-tab="chat" aria-selected="false">
+              Тестовый диалог
+            </button>
+          </nav>
+          <div id="notice" role="status" hidden></div>
+          <section id="settings" class="tab settings-layout">
+            <nav class="settings-nav" aria-label="Настройки агента">
+              <button data-section="general" class="active" aria-pressed="true">
+                Основное</button
+              ><button data-section="intent-settings" aria-pressed="false">
+                Намерения <span id="intent-count">0</span></button
+              ><button data-section="entity-settings" aria-pressed="false">
+                Сущности <span id="entity-count">0</span></button
+              ><button data-section="rule-settings" aria-pressed="false">
+                Сценарии <span id="rule-count">0</span>
+              </button>
+            </nav>
+            <div class="settings-content">
+              <section id="general" class="settings-section">
+                <div class="section-title">
+                  <div>
+                    <h2>Основное</h2>
+                    <p>
+                      Название, назначение и поведение при неизвестном запросе.
+                    </p>
+                  </div>
+                </div>
+                <div class="panel">
+                  <label
+                    >Название агента<input
+                      id="name"
+                      maxlength="120"
+                      placeholder="Учебный помощник" /></label
+                  ><label
+                    >Назначение<textarea
+                      id="description"
+                      placeholder="С какими вопросами помогает агент?"
+                    ></textarea>
+                  </label>
+                  <div class="form-divider"></div>
+                  <label>Если запрос не распознан<input id="fallback" /></label>
+                  <div class="threshold-row">
+                    <label
+                      >Порог уверенности<input
+                        id="threshold"
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                    /></label>
+                    <p class="field-help">
+                      При уверенности ниже этого значения агент использует ответ
+                      по умолчанию.
+                    </p>
+                  </div>
+                </div>
+              </section>
+              <section id="intent-settings" class="settings-section" hidden>
+                <div class="section-title">
+                  <div>
+                    <h2>Намерения</h2>
+                    <p>
+                      Чего хочет пользователь? Добавьте разные формулировки
+                      одной задачи.
+                    </p>
+                  </div>
+                  <button class="outline" id="add-intent">
+                    Добавить намерение
+                  </button>
+                </div>
+                <div id="intents" class="stack"></div>
+              </section>
+              <section id="entity-settings" class="settings-section" hidden>
+                <div class="section-title">
+                  <div>
+                    <h2>Сущности</h2>
+                    <p>
+                      Какие данные нужно найти: номер заказа, дата или другой
+                      параметр?
+                    </p>
+                  </div>
+                  <button class="outline" id="add-entity">
+                    Добавить сущность
+                  </button>
+                </div>
+                <div id="entities" class="stack"></div>
+              </section>
+              <section id="rule-settings" class="settings-section" hidden>
+                <div class="section-title">
+                  <div>
+                    <h2>Сценарии</h2>
+                    <p>
+                      Выберите реакцию на намерение в заданном состоянии
+                      диалога.
+                    </p>
+                  </div>
+                  <button class="outline" id="add-rule">
+                    Добавить правило
+                  </button>
+                </div>
+                <div id="rules" class="stack"></div>
+              </section>
+            </div>
+          </section>
+          <section id="training" class="tab" hidden>
+            <div class="section-title">
+              <div>
+                <h2>Обучение модели</h2>
+                <p>Соберите примеры и подготовьте агента к диалогу.</p>
+              </div>
+            </div>
+            <div class="training-panel">
+              <div class="training-summary">
+                <span class="status-badge">Модель агента</span>
+                <h3 id="model-status"></h3>
+                <p id="model-detail" class="muted"></p>
+                <button id="train">Обучить агента</button>
+                <p class="field-help">
+                  Несохранённые настройки будут сохранены перед обучением.
+                </p>
+              </div>
+              <div class="training-data">
+                <h3>Обучающие данные</h3>
+                <dl id="training-summary"></dl>
+              </div>
+            </div>
+            <pre id="train-error" hidden></pre>
+          </section>
+          <section id="chat" class="tab" hidden>
+            <div class="section-title chat-title">
+              <div>
+                <h2>Проверьте агента в диалоге</h2>
+                <p>Ответы слева, ход обработки каждого сообщения справа.</p>
+              </div>
+              <button class="outline" id="reset-chat">Новый диалог</button>
+            </div>
+            <div class="chat-layout">
+              <div class="chat-card">
+                <div class="chat-heading">
+                  <strong>Диалог</strong><span>Тестовая сессия</span>
+                </div>
+                <div id="messages" class="messages"></div>
+                <form id="chat-form">
+                  <label class="visually-hidden" for="chat-input"
+                    >Сообщение агенту</label
+                  ><input
+                    id="chat-input"
+                    placeholder="Напишите сообщение агенту…"
+                    autocomplete="off"
+                  /><button>Отправить</button>
+                </form>
+              </div>
+              <div class="trace-card">
+                <div class="trace-heading">
+                  <h3>Как получен ответ</h3>
+                  <p>Намерение, сущности и выбранное действие.</p>
+                </div>
+                <div id="trace" class="trace-empty"></div>
+              </div>
+            </div>
+            <p id="chat-help" class="field-help"></p>
+          </section>
+        </div>
+      </section>
+    </main>
+    <noscript>Для работы приложения включите JavaScript.</noscript>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
