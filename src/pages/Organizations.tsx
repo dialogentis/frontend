@@ -1,0 +1,69 @@
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Boxes, LogOut, Moon, Plus, Sun } from 'lucide-react'
+import { api, check } from '../api'
+import { useSession } from '../Session'
+import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
+import { AuthFrame } from './Auth'
+
+const schema = z.object({ name: z.string().trim().min(1, 'Укажите название').max(120), slug: z.string().regex(/^[a-z][a-z0-9-]{1,63}$/, 'От 2 до 64 латинских букв, цифр и дефисов') })
+type OrganizationInput = z.infer<typeof schema>
+
+export function useOrganizations() {
+  const { session } = useSession()
+  return useQuery({ queryKey: ['organizations', session?.user.id], enabled: !!session?.user.email_verified, queryFn: async () => {
+    const { data, error, response } = await api.GET('/api/v1/organizations'); check(response, error)
+    if (!data) throw new Error('Некорректный ответ сервера')
+    return data.items
+  } })
+}
+
+export function RequireSession({ children }: { children: React.ReactNode }) {
+  const { session } = useSession(); const location = useLocation()
+  if (!session) return <Navigate to="/login" replace state={{ returnTo: location.pathname }}/>
+  if (!session.user.email_verified) return <Navigate to="/verify-email" replace state={{ email: session.user.email }}/>
+  return children
+}
+
+export function OrganizationsPage() {
+  const orgs = useOrganizations(); const cache = useQueryClient(); const { session, logout } = useSession(); const navigate = useNavigate()
+  const [creating, setCreating] = useState(false); const [error, setError] = useState('')
+  const form = useForm<OrganizationInput>({ resolver: zodResolver(schema) })
+  const submit = form.handleSubmit(async body => { setError(''); try {
+    const result = await api.POST('/api/v1/organizations', { body }); check(result.response, result.error)
+    if (!result.data) throw new Error('Некорректный ответ сервера')
+    await cache.invalidateQueries({ queryKey: ['organizations'] }); navigate(`/app/o/${result.data.id}`)
+  } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось создать пространство') } })
+  return <main className="organization-page"><header className="organization-top"><Link className="auth-brand" to="/app/organizations"><img src="/icon.svg" alt=""/>dialogentis<span>/</span></Link><div><span className="muted">{session?.user.email}</span><button className="button button-text" onClick={() => logout().then(() => navigate('/login')).catch(e => setError(e.message))}><LogOut size={16}/>Выйти</button></div></header><section className="organization-content"><div className="section-heading"><div><h1>Рабочие пространства</h1><p>Выберите пространство или создайте новое.</p></div><button className="button button-primary" onClick={() => setCreating(!creating)}><Plus size={16}/>Создать пространство</button></div>
+    {creating && <form className="inline-create" onSubmit={submit}><div className="inline-create-fields"><label className="field-label">Название<input {...form.register('name')} placeholder="Например, команда поддержки"/><span className="field-help error-text">{form.formState.errors.name?.message}</span></label><label className="field-label">Адрес пространства<input {...form.register('slug')} placeholder="support-team"/><span className="field-help">{form.formState.errors.slug?.message || 'Латинские буквы, цифры и дефис'}</span></label><button className="button button-primary" disabled={form.formState.isSubmitting}>Создать</button></div></form>}
+    {error && <p role="alert" className="auth-error">{error}</p>}{orgs.isLoading ? <p role="status">Загрузка пространств…</p> : orgs.isError ? <div className="data-state"><h2>Не удалось загрузить пространства</h2><button className="button button-quiet" onClick={() => orgs.refetch()}>Повторить</button></div> : orgs.data?.length ? <div className="organization-list">{orgs.data.map(org => <Link className="organization-row" key={org.id} to={`/app/o/${org.id}`}><span className="agent-letter">{org.name[0]}</span><div><strong>{org.name}</strong><p>{org.slug}</p></div><span className="muted">{org.role === 'owner' ? 'Владелец' : org.role === 'admin' ? 'Администратор' : org.role === 'editor' ? 'Редактор' : 'Наблюдатель'}</span></Link>)}</div> : <div className="data-state"><Boxes size={28}/><h2>Здесь пока нет пространств</h2><p>Создайте пространство для работы с агентами или примите приглашение.</p><button className="button button-quiet" onClick={() => setCreating(true)}>Создать пространство</button></div>}</section></main>
+}
+
+export function WorkspacePage() {
+  const { orgId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const cache = useQueryClient(); const [error, setError] = useState(''); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
+  if (orgs.isLoading) return <div className="auth-state" role="status">Загрузка пространства…</div>
+  if (orgs.isError) return <div className="auth-state"><h1>Не удалось загрузить пространство</h1><button className="button button-quiet" onClick={() => orgs.refetch()}>Повторить</button></div>
+  const current = orgs.data?.find(o => o.id === orgId)
+  if (!current) return <div className="data-state"><h1>Пространство недоступно</h1><Link className="button button-quiet" to="/app/organizations">К пространствам</Link></div>
+  const options = orgs.data!.map(o => ({ id: o.id, name: o.name, initials: o.name.slice(0, 2).toLocaleUpperCase('ru') }))
+  const role = { owner: 'Владелец', admin: 'Администратор', editor: 'Редактор', viewer: 'Наблюдатель' }[current.role]
+  return <div className="app-shell"><aside className="sidebar workspace-real-sidebar"><Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link><WorkspaceSwitcher value={current.id} organizations={options} onChange={id => { cache.removeQueries({ predicate: q => q.queryKey[0] !== 'session' && q.queryKey[0] !== 'organizations' }); navigate(`/app/o/${id}`) }}/><nav className="primary-nav" aria-label="Основная навигация"><span className="nav-link nav-link-active"><Boxes size={18}/>Агенты</span><Link className="nav-link" to="/app/organizations">Все пространства</Link></nav><div className="sidebar-bottom"><div className="user-profile"><span className="user-avatar">Вы</span><span><strong>{session?.user.email}</strong><small>{role}</small></span></div></div></aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><span>{current.name}</span></div><div className="topbar-actions"><button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button><button className="button button-text" onClick={() => logout().then(() => navigate('/login')).catch(e => setError(e.message))}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page"><div className="page-heading"><div><h1>Агенты</h1><p>Создавайте диалоги для ваших пользователей.</p></div><button className="button button-primary" disabled title="Создание агентов пока недоступно"><Plus size={16}/>Создать агента</button></div>{error && <p role="alert" className="auth-error">{error}</p>}<div className="data-state"><Boxes size={28}/><h2>Управление агентами</h2><p>Создание и редактирование агентов скоро будет доступно.</p></div></main></div></div>
+}
+
+export function InvitationPage() {
+  const location = useLocation(); const navigate = useNavigate(); const cache = useQueryClient(); const { session, refresh } = useSession()
+  const [token, setToken] = useState<string | null>(() => new URLSearchParams(location.hash.slice(1)).get('token') || location.state?.inviteToken || null)
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
+  useEffect(() => { if (location.hash) { setToken(new URLSearchParams(location.hash.slice(1)).get('token')); window.history.replaceState(window.history.state, '', location.pathname + location.search) } }, [location.hash, location.pathname, location.search])
+  const accept = async () => { if (!token) return; setBusy(true); setError(''); try {
+    const result = await api.POST('/api/v1/invitations/accept', { body: { token } }); check(result.response, result.error)
+    const data = result.data
+    if (!data?.organization_id) throw new Error('Некорректный ответ сервера')
+    setToken(null); await refresh(); await cache.invalidateQueries({ queryKey: ['organizations'] }); navigate(`/app/o/${data.organization_id}`, { replace: true })
+  } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось принять приглашение') } finally { setBusy(false) } }
+  return <AuthFrame><h1>Приглашение в пространство</h1><p className="auth-intro">Войдите с почтой, на которую пришло приглашение.</p>{error && <p role="alert" className="auth-error">{error}</p>}{!token ? <p className="auth-error">Ссылка отсутствует. Откройте приглашение из письма.</p> : !session ? <div className="auth-actions"><Link className="button button-primary" to="/login" state={{ inviteToken: token }}>Войти</Link><Link className="button button-quiet" to="/register" state={{ inviteToken: token }}>Создать аккаунт</Link></div> : !session.user.email_verified ? <Link className="button button-primary" to="/verify-email" state={{ email: session.user.email, inviteToken: token }}>Подтвердить почту</Link> : <><p className="auth-intro">Вы вошли как {session.user.email}</p><button className="button button-primary" disabled={busy} onClick={accept}>Принять приглашение</button></>}</AuthFrame>
+}

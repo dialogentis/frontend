@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronsUpDown } from 'lucide-react'
-import { organizations } from '../model'
+import { organizations as defaultOrganizations } from '../model'
+import type { Organization } from '../model'
 import './workspace-switcher.css'
 
-export function WorkspaceSwitcher({ value, onChange, disabled = false }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
+export function WorkspaceSwitcher({ value, onChange, disabled = false, organizations = defaultOrganizations }: { value: string; onChange: (id: string) => void; disabled?: boolean; organizations?: Organization[] }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -17,7 +18,7 @@ export function WorkspaceSwitcher({ value, onChange, disabled = false }: { value
     const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false) }
     document.addEventListener('pointerdown', outside)
     return () => document.removeEventListener('pointerdown', outside)
-  }, [open, value])
+  }, [open, value, organizations])
   return <div className="workspace-switcher" ref={root} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }}>
     <input type="hidden" name="organization" value={value}/>
     <button ref={trigger} disabled={disabled} type="button" className="workspace-trigger" aria-label={`Рабочее пространство: ${current.name}`} aria-haspopup="listbox" aria-expanded={open} aria-controls="workspace-options" onClick={() => setOpen(v => !v)} onKeyDown={event => {

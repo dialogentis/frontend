@@ -1,107 +1,125 @@
 import assert from 'node:assert/strict'
-import { mkdir } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import puppeteer from 'puppeteer-core'
 
+const base = process.env.BASE_URL || 'http://localhost:18180'
+const mailbox = process.env.MAILPIT_URL || 'http://localhost:18125'
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true })
-const base = process.env.BASE_URL || 'http://127.0.0.1:5178'
-const checks = []
 const errors = []
 const page = await browser.newPage()
+page.setDefaultTimeout(10000)
 page.on('pageerror', error => errors.push(error.message))
-await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 })
-const go = async path => { await page.goto(`${base}${path}`, { waitUntil: 'networkidle0' }); await page.evaluate(() => document.fonts.ready) }
-const click = async (text, selector = 'button') => { const candidates = await page.$$(selector); for (const el of candidates) if ((await el.evaluate(e => e.textContent)).trim() === text) { await el.click(); return } throw Error(`Missing ${selector}: ${text}`) }
-const waitText = text => page.waitForFunction(t => document.body.innerText.includes(t), {}, text)
-try {
-  await go('/agents/support/flow')
-  await page.waitForSelector('.react-flow__node')
-  assert.equal(await page.$$eval('.react-flow__node', n => n.length), 8)
-  await click('Где мой заказ?')
-  await waitText('Для проверки используйте 12345')
-  await page.type('#test-message', '12345')
-  await page.click('[aria-label="Отправить сообщение"]')
-  await waitText('Заказ 12345 передан в доставку')
-  assert.equal(await page.$$eval('.dialog-node-visited', n => n.length), 4)
-  checks.push('Order dialogue, parameter extraction and highlighted trace')
-
-  await page.click('[data-id="greeting"] .node-heading')
-  await page.focus('[name="node_body"]')
-  await page.$eval('[name="node_body"]', e => e.select())
-  await page.type('[name="node_body"]', 'Привет из прототипа!')
-  await new Promise(resolve => setTimeout(resolve, 850))
-  await go('/agents/support/flow')
-  await waitText('Привет из прототипа!')
-  assert.equal(await page.$eval('[data-id="greeting"] .node-body', e => e.textContent), 'Привет из прототипа!')
-  checks.push('Graph edit survives reload')
-
-  for (const route of ['/agents', '/overview', '/dialogs', '/analytics', '/integrations', '/members', '/audit', '/settings', '/help', ...['intents', 'entities', 'examples', 'training', 'versions', 'channels', 'settings'].map(t => `/agents/support/${t}`)]) {
-    await go(route)
-    assert.ok(await page.$('h1'), `${route} has a heading`)
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflows`)
+const email = `browser-${randomUUID()}@example.com`
+const guestEmail = `guest-${randomUUID()}@example.com`
+const password = 'browser password 12345'
+const click = async text => {
+  for (const element of await page.$$('button, a')) {
+    if ((await element.evaluate(e => e.textContent)).trim() === text) { await element.click(); return }
   }
-  checks.push('All 16 workspace and agent screens load without horizontal overflow')
-
-  await go('/agents?state=error')
-  await click('Повторить')
-  await page.waitForSelector('.agent-table-row')
-  await page.select('[aria-label="Состояние демонстрационных данных"]', 'loading')
-  await page.waitForSelector('.skeleton-list')
-  await page.select('[aria-label="Состояние демонстрационных данных"]', 'empty')
-  await waitText('Здесь пока нет агентов')
-  await page.select('[aria-label="Состояние демонстрационных данных"]', 'full')
-  await click('Создать агента')
-  await page.type('[name="agent_name"]', 'Тестовый агент')
-  await click('Создать в демопроекте')
-  await waitText('Тестовый агент')
-  await go('/agents')
-  assert.ok((await page.$eval('.agent-table', e => e.textContent)).includes('Тестовый агент'))
-  await page.select('[name="organization"]', 'team')
-  await waitText('Секретарь команды')
-  assert.ok(!(await page.$eval('.agent-table', e => e.textContent)).includes('Тестовый агент'))
-  await page.select('[name="organization"]', 'studio')
-  checks.push('Empty/loading/error recovery, local agent creation and workspace filtering')
-
-  await go('/agents/support/intents')
-  await click('Добавить намерение')
-  await page.type('[name="intent_name"]', 'Проверка')
-  await page.type('[name="intent_code"]', 'smoke_intent')
-  await click('Сохранить локально')
-  await go('/agents/support/intents')
-  await waitText('smoke_intent')
-  await go('/agents/delivery/intents')
-  assert.ok(!(await page.$eval('main', e => e.textContent)).includes('smoke_intent'))
-  checks.push('Intent edits persist and stay scoped to their agent')
-
-  await go('/agents/support/flow')
-  await page.click('[aria-label="Включить тёмную тему"]')
+  throw new Error(`Missing action: ${text}`)
+}
+const contains = text => page.waitForFunction(value => document.body.innerText.includes(value), {}, text)
+const mailLink = async (subject, recipient = email) => {
+  for (let i = 0; i < 100; i++) {
+    const data = await (await fetch(`${mailbox}/api/v1/messages?limit=200`)).json()
+    const message = (data.messages || []).find(m => m.Subject.includes(subject) && m.To.some(r => r.Address === recipient))
+    if (message) {
+      const details = await (await fetch(`${mailbox}/api/v1/message/${message.ID}`)).json()
+      const match = details.Text.match(/https?:\/\/[^\s]+#token=[A-Za-z0-9_-]+/)
+      assert.ok(match)
+      return match[0]
+    }
+    await new Promise(resolve => setTimeout(resolve, 200))
+  }
+  throw new Error('Email was not delivered')
+}
+try {
+  await page.setViewport({ width: 1280, height: 800 })
+  await page.goto(`${base}/app/organizations`, { waitUntil: 'networkidle0' })
+  await page.waitForFunction(() => location.pathname === '/login')
+  await click('Зарегистрироваться')
+  await page.type('[name="email"]', email)
+  await page.type('[name="password"]', password)
+  await click('Создать аккаунт')
+  await page.waitForFunction(() => location.pathname === '/verify-email')
+  const confirmation = await mailLink('Подтверждение')
+  await page.goto(confirmation, { waitUntil: 'networkidle0' })
+  await contains('Почта подтверждена')
+  assert.equal(await page.evaluate(() => location.hash), '')
+  await click('Вернуться ко входу')
+  await page.waitForFunction(() => location.pathname === '/login')
+  await page.waitForSelector('[name="password"]')
+  await page.click('[name="email"]', { clickCount: 3 })
+  await page.keyboard.press('Backspace')
+  await page.type('[name="email"]', email)
+  await page.type('[name="password"]', password)
+  await click('Войти')
+  await page.waitForFunction(() => location.pathname === '/app/organizations')
+  await contains('Здесь пока нет пространств')
+  await click('Создать пространство')
+  await page.type('[name="name"]', 'Рабочая команда')
+  await page.type('[name="slug"]', `team-${randomUUID()}`)
+  await click('Создать')
+  await page.waitForFunction(() => location.pathname.startsWith('/app/o/'))
+  await contains('Рабочая команда')
+  const orgId = await page.evaluate(() => location.pathname.split('/').at(-1))
+  const invitationStatus = await page.evaluate(async ({ orgId, guestEmail }) => {
+    const me = await (await fetch('/api/v1/auth/me')).json()
+    const response = await fetch(`/api/v1/organizations/${orgId}/invitations`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token },
+      body: JSON.stringify({ email: guestEmail, role: 'editor' }),
+    })
+    return response.status
+  }, { orgId, guestEmail })
+  assert.equal(invitationStatus, 201)
+  const invitation = await mailLink('Приглашение', guestEmail)
   await page.reload({ waitUntil: 'networkidle0' })
-  assert.equal(await page.$eval('html', e => e.dataset.mode), 'dark')
-  await mkdir('.hallmark/screens', { recursive: true })
-  await page.screenshot({ path: '.hallmark/screens/flow-dark.png' })
-  await page.click('[aria-label="Включить светлую тему"]')
-  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 1 })
-  await go('/agents/support/flow')
-  await click('Показать блоки')
-  await click('Добавить блок', '.node-list button')
-  await click('Ответ', '.mobile-block-options button')
-  await page.waitForSelector('[name="node_label"]')
-  assert.equal(await page.$eval('[name="node_label"]', e => e.value), 'Ответ')
-  await go('/agents')
-  await page.click('[aria-label="Открыть навигацию"]')
-  assert.ok(await page.$('.sidebar-open'))
-  await click('Диалоги', '.primary-nav a')
-  await waitText('Показаны примеры диалогов')
-  assert.ok(!(await page.$('.sidebar-open')))
+  await contains('Рабочая команда')
+  await page.setViewport({ width: 390, height: 844 })
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
-  checks.push('Theme persistence and mobile navigation')
-
-  await page.setViewport({ width: 1440, height: 900 })
-  await go('/settings')
-  await click('Сбросить демоданные')
-  await click('Да, сбросить')
-  await page.waitForSelector('.agent-table')
-  assert.equal(await page.$$eval('.agent-table-row', n => n.length), 3)
+  await click('Пространства')
+  await page.waitForFunction(() => location.pathname === '/app/organizations')
+  await contains('Рабочие пространства')
+  await click('Выйти')
+  await page.waitForFunction(() => location.pathname === '/login')
+  await page.goto(`${base}/app/organizations`, { waitUntil: 'networkidle0' })
+  await page.waitForFunction(() => location.pathname === '/login')
+  await click('Забыли пароль?')
+  await page.waitForFunction(() => location.pathname === '/forgot-password')
+  await page.type('[name="email"]', email)
+  await click('Отправить ссылку')
+  await contains('Если адрес доступен')
+  const reset = await mailLink('Восстановление')
+  await page.goto(reset, { waitUntil: 'networkidle0' })
+  await page.type('[name="password"]', 'new browser password 54321')
+  await click('Сохранить пароль')
+  await contains('Пароль изменён')
+  assert.equal(await page.evaluate(() => location.hash), '')
+  await page.goto(invitation, { waitUntil: 'networkidle0' })
+  await click('Создать аккаунт')
+  await page.waitForFunction(() => location.pathname === '/register')
+  await page.waitForSelector('[name="password"]')
+  await page.type('[name="email"]', guestEmail)
+  await page.type('[name="password"]', password)
+  await click('Создать аккаунт')
+  await page.waitForFunction(() => location.pathname === '/verify-email')
+  await page.goto(await mailLink('Подтверждение', guestEmail), { waitUntil: 'networkidle0' })
+  await contains('Почта подтверждена')
+  await click('Вернуться ко входу')
+  await page.waitForSelector('[name="password"]')
+  await page.click('[name="email"]', { clickCount: 3 })
+  await page.keyboard.press('Backspace')
+  await page.type('[name="email"]', guestEmail)
+  await page.type('[name="password"]', password)
+  await click('Войти')
+  await page.waitForFunction(() => ['/app/organizations', '/invitations/accept'].includes(location.pathname))
+  if (await page.evaluate(() => location.pathname) !== '/invitations/accept') await page.goto(invitation, { waitUntil: 'networkidle0' })
+  await click('Принять приглашение')
+  await page.waitForFunction(id => location.pathname === `/app/o/${id}`, {}, orgId)
+  await contains('Рабочая команда')
   assert.deepEqual(errors, [])
-  checks.push('Reset restores the seed; zero browser runtime errors')
-  console.log(JSON.stringify({ passed: checks }, null, 2))
+  console.log('PASS: registration, email verification, login, organization creation, mobile navigation, logout, password reset and invitation acceptance')
+} catch (error) {
+  console.error('Page:', await page.evaluate(() => `${location.pathname}\n${document.body.innerText}`))
+  throw error
 } finally { await browser.close() }
