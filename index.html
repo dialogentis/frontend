@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f4f1" />
+    <meta name="description" content="Dialogentis: рабочее пространство для создания, настройки и проверки диалоговых агентов." />
+    <title>Агенты | Dialogentis</title>
+    <script>
+      try { const mode = localStorage.getItem('dialogentis-mode'); if (mode) document.documentElement.dataset.mode = mode; } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Для редактора Dialogentis нужен JavaScript. Включите его в настройках браузера.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

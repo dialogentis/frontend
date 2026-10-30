@@ -1,0 +1,15 @@
+{
+  "sources": [
+    { "path": "README.md", "line": 1, "signal": "Empty frontend repository" },
+    { "path": "../docs/TECHNICAL_SPECIFICATION.md", "line": 5, "signal": "Russian multi-tenant chatbot authoring platform" },
+    { "path": "../docs/TECHNICAL_SPECIFICATION.md", "line": 38, "signal": "React, TypeScript, Vite and React Flow" }
+  ],
+  "preserve": ["LICENSE", ".git", "Agreed frontend stack", "Russian UI", "Light and dark modes"],
+  "introduce": ["Vite app scaffold", "Terrazzo app token system", "Explicit mock data adapter", "Agents workspace", "Interactive flow editor", "Test chat and diagnostics", "Loading, empty and error previews"],
+  "scope": "app",
+  "genre": "modern-minimal",
+  "tone": "utilitarian",
+  "material": "User-authorized, clearly labelled mock agents and conversations",
+  "absent": ["Production metrics", "Testimonials", "Logo walls", "Photography"],
+  "target": "Local frontend checkout; no hosting or publication"
+}

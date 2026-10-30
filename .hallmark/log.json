@@ -1,0 +1,40 @@
+[
+ {
+  "shape": "app",
+  "theme": "terrazzo",
+  "axes": "light / geometric-sans / warm",
+  "hero": "none: working app screen",
+  "nav": "workspace rail and agent tabs",
+  "footer": "editor draft and graph counts",
+  "imagery": "interactive product, explicitly mocked",
+  "photos": [],
+  "entry": "/agents/support/flow",
+  "fingerprint": {
+   "scope": "app",
+   "columns": "rail + graph + chat",
+   "action": "edit and test a dialogue",
+   "firstView": "visual flow",
+   "surface": "square neutral planes",
+   "accent": "rust selection"
+  },
+  "sections": [
+   "agent list",
+   "flow editor",
+   "NLU data",
+   "training preview",
+   "channels",
+   "workspace administration"
+  ],
+  "signature": "editable dialogue graph with a highlighted mock conversation path",
+  "waived": [],
+  "prompt": "Dialogentis: дизайн с моками; утилитарный рабочий инструмент, нейтральные светлые поверхности, компактные элементы, один акцент и тёмная тема",
+  "review": {
+   "floorFail": 0,
+   "reflexOpen": 0,
+   "warningsAnswered": 6,
+   "finishReview": "subagent: fix; four findings resolved and recaptured"
+  },
+  "date": "2026-10-30",
+  "mode": "build"
+ }
+]
