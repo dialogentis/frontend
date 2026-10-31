@@ -4,11 +4,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Boxes, LogOut, Moon, Plus, Sun } from 'lucide-react'
+import { Boxes, LogOut, Moon, Plus, Sun, Users } from 'lucide-react'
 import { api, check } from '../api'
 import { useSession } from '../Session'
 import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
 import { AuthFrame } from './Auth'
+import { MembersPage } from './Members'
 
 const schema = z.object({ name: z.string().trim().min(1, 'Укажите название').max(120), slug: z.string().regex(/^[a-z][a-z0-9-]{1,63}$/, 'От 2 до 64 латинских букв, цифр и дефисов') })
 type OrganizationInput = z.infer<typeof schema>
@@ -44,14 +45,26 @@ export function OrganizationsPage() {
 }
 
 export function WorkspacePage() {
-  const { orgId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const cache = useQueryClient(); const [error, setError] = useState(''); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
+  const { orgId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const location = useLocation(); const cache = useQueryClient(); const [error, setError] = useState(''); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
   if (orgs.isLoading) return <div className="auth-state" role="status">Загрузка пространства…</div>
   if (orgs.isError) return <div className="auth-state"><h1>Не удалось загрузить пространство</h1><button className="button button-quiet" onClick={() => orgs.refetch()}>Повторить</button></div>
   const current = orgs.data?.find(o => o.id === orgId)
-  if (!current) return <div className="data-state"><h1>Пространство недоступно</h1><Link className="button button-quiet" to="/app/organizations">К пространствам</Link></div>
+  if (!current || !session) return <div className="data-state"><h1>Пространство недоступно</h1><Link className="button button-quiet" to="/app/organizations">К пространствам</Link></div>
   const options = orgs.data!.map(o => ({ id: o.id, name: o.name, initials: o.name.slice(0, 2).toLocaleUpperCase('ru') }))
   const role = { owner: 'Владелец', admin: 'Администратор', editor: 'Редактор', viewer: 'Наблюдатель' }[current.role]
-  return <div className="app-shell"><aside className="sidebar workspace-real-sidebar"><Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link><WorkspaceSwitcher value={current.id} organizations={options} onChange={id => { cache.removeQueries({ predicate: q => q.queryKey[0] !== 'session' && q.queryKey[0] !== 'organizations' }); navigate(`/app/o/${id}`) }}/><nav className="primary-nav" aria-label="Основная навигация"><span className="nav-link nav-link-active"><Boxes size={18}/>Агенты</span><Link className="nav-link" to="/app/organizations">Все пространства</Link></nav><div className="sidebar-bottom"><div className="user-profile"><span className="user-avatar">Вы</span><span><strong>{session?.user.email}</strong><small>{role}</small></span></div></div></aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><span>{current.name}</span></div><div className="topbar-actions"><button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button><button className="button button-text" onClick={() => logout().then(() => navigate('/login')).catch(e => setError(e.message))}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page"><div className="page-heading"><div><h1>Агенты</h1><p>Создавайте диалоги для ваших пользователей.</p></div><button className="button button-primary" disabled title="Создание агентов пока недоступно"><Plus size={16}/>Создать агента</button></div>{error && <p role="alert" className="auth-error">{error}</p>}<div className="data-state"><Boxes size={28}/><h2>Управление агентами</h2><p>Создание и редактирование агентов скоро будет доступно.</p></div></main></div></div>
+  const membersPage = location.pathname.endsWith('/members')
+  const root = `/app/o/${current.id}`
+  return <div className="app-shell"><aside className="sidebar workspace-real-sidebar">
+    <Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link>
+    <WorkspaceSwitcher value={current.id} organizations={options} onChange={id => { cache.removeQueries({ predicate: q => q.queryKey[0] !== 'session' && q.queryKey[0] !== 'organizations' }); navigate(`/app/o/${id}`) }}/>
+    <nav className="primary-nav" aria-label="Основная навигация"><Link className={`nav-link ${!membersPage ? 'nav-link-active' : ''}`} to={root}><Boxes size={18}/>Агенты</Link><Link className={`nav-link ${membersPage ? 'nav-link-active' : ''}`} to={`${root}/members`}><Users size={18}/>Участники</Link><Link className="nav-link" to="/app/organizations">Все пространства</Link></nav>
+    <div className="sidebar-bottom"><div className="user-profile"><span className="user-avatar">Вы</span><span><strong>{session.user.email}</strong><small>{role}</small></span></div></div>
+  </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><span>{current.name}</span></div><div className="topbar-actions">
+    <Link className="button button-text workspace-mobile-members" to={membersPage ? root : `${root}/members`}>{membersPage ? 'Агенты' : 'Участники'}</Link>
+    <button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
+    <button className="button button-text" onClick={() => logout().then(() => navigate('/login')).catch(e => setError(e.message))}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page">
+    {error && <p role="alert" className="auth-error">{error}</p>}{membersPage ? <MembersPage key={current.id} orgId={current.id} role={current.role} userId={session.user.id}/> : <><div className="page-heading"><div><h1>Агенты</h1><p>Создавайте диалоги для ваших пользователей.</p></div><button className="button button-primary" disabled title="Создание агентов пока недоступно"><Plus size={16}/>Создать агента</button></div><div className="data-state"><Boxes size={28}/><h2>Управление агентами</h2><p>Создание и редактирование агентов скоро будет доступно.</p></div></>}
+  </main></div></div>
 }
 
 export function InvitationPage() {

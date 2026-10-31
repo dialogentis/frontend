@@ -449,6 +449,10 @@ main { min-width: 0; }
 .member-row p { color: var(--color-muted); font-size: 11px; margin-top: var(--space-2xs); }
 .member-row > span:not(.user-avatar) { display: flex; align-items: center; gap: var(--space-xs); font-size: 11px; margin-left: auto; }
 .member-row small { min-width: 140px; text-align: right; font-size: 10px; color: var(--color-muted); }
+.member-identity { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.members-heading { margin: var(--space-xl) 0 var(--space-md); font-size: var(--text-section); }
+.transfer-form { margin-top: var(--space-xl); }
+.workspace-mobile-members { display: none; }
 .event-row { display: flex; align-items: center; gap: var(--space-md); padding-block: var(--space-lg); border-block: 1px solid var(--color-rule); }
 .event-row strong { font-size: var(--text-data); font-weight: 500; }
 .event-row p, .event-row > span { color: var(--color-muted); font-size: var(--text-label); }
@@ -654,6 +658,7 @@ dialog::backdrop { background: var(--color-overlay); }
 .flow-mobile-note p { max-width: 45ch; }
 @media (max-width: 960px) { .sidebar:not(.sidebar-open) { visibility: hidden; } }
 @media (max-width: 640px) { .member-row > span:not(.user-avatar) { margin-left: var(--space-xl); } .chat-composer textarea { font-size: 16px; } }
+@media (max-width: 960px) { .workspace-mobile-members { display: inline-flex; } .member-row select { max-width: 100%; } }
 .agent-heading p code, .react-flow__attribution { font-size: 11px; }
 .diagnostics-empty { font-size: 12px; }
 .agent-workspace-flow { height: calc(100dvh - var(--topbar-height)); display: flex; flex-direction: column; }

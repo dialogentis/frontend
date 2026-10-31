@@ -396,6 +396,20 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** CursorPage[InvitationView] */
+        CursorPage_InvitationView_: {
+            /** Items */
+            items: components["schemas"]["InvitationView"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[MemberView] */
+        CursorPage_MemberView_: {
+            /** Items */
+            items: components["schemas"]["MemberView"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** CursorPage[OrganizationView] */
         CursorPage_OrganizationView_: {
             /** Items */
@@ -444,6 +458,30 @@ export interface components {
              */
             email: string;
         };
+        /** InvitationView */
+        InvitationView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "editor" | "viewer";
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Revoked */
+            revoked: boolean;
+            /** Accepted */
+            accepted: boolean;
+        };
         /** LoginResult */
         LoginResult: {
             user: components["schemas"]["UserView"];
@@ -457,6 +495,34 @@ export interface components {
             csrf_token: string;
             /** Memberships */
             memberships: components["schemas"]["MembershipView"][];
+        };
+        /** MemberRoleView */
+        MemberRoleView: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "editor" | "viewer";
+        };
+        /** MemberView */
+        MemberView: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "editor" | "viewer";
         };
         /** MembershipView */
         MembershipView: {
@@ -1801,7 +1867,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CursorPage_MemberView_"];
                 };
             };
             /** @description Bad Request */
@@ -2011,7 +2077,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MemberRoleView"];
                 };
             };
             /** @description Bad Request */
@@ -2320,7 +2386,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CursorPage_InvitationView_"];
                 };
             };
             /** @description Bad Request */
@@ -2427,7 +2493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["InvitationView"];
                 };
             };
             /** @description Bad Request */
