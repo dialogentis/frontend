@@ -10,6 +10,7 @@ import { useSession } from '../Session'
 import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
 import { AuthFrame } from './Auth'
 import { MembersPage } from './Members'
+import { WorkspaceAgents } from './WorkspaceAgents'
 
 const schema = z.object({ name: z.string().trim().min(1, 'Укажите название').max(120), slug: z.string().regex(/^[a-z][a-z0-9-]{1,63}$/, 'От 2 до 64 латинских букв, цифр и дефисов') })
 type OrganizationInput = z.infer<typeof schema>
@@ -63,7 +64,7 @@ export function WorkspacePage() {
     <Link className="button button-text workspace-mobile-members" to={membersPage ? root : `${root}/members`}>{membersPage ? 'Агенты' : 'Участники'}</Link>
     <button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
     <button className="button button-text" onClick={() => logout().then(() => navigate('/login')).catch(e => setError(e.message))}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page">
-    {error && <p role="alert" className="auth-error">{error}</p>}{membersPage ? <MembersPage key={current.id} orgId={current.id} name={current.name} role={current.role} userId={session.user.id}/> : <><div className="page-heading"><div><h1>Агенты</h1><p>Создавайте диалоги для ваших пользователей.</p></div><button className="button button-primary" disabled title="Создание агентов пока недоступно"><Plus size={16}/>Создать агента</button></div><div className="data-state"><Boxes size={28}/><h2>Управление агентами</h2><p>Создание и редактирование агентов скоро будет доступно.</p></div></>}
+    {error && <p role="alert" className="auth-error">{error}</p>}{membersPage ? <MembersPage key={current.id} orgId={current.id} name={current.name} role={current.role} userId={session.user.id}/> : <WorkspaceAgents key={current.id} orgId={current.id} role={current.role}/>}
   </main></div></div>
 }
 
