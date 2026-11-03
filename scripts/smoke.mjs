@@ -190,8 +190,17 @@ try {
   await page.goto(`${base}/app/o/${orgId}/members`, { waitUntil: 'networkidle0' })
   await contains(guestEmail)
   await contains('Владелец')
+  await click('Удалить пространство')
+  await page.type('.reset-section input:not([type="password"])', 'Рабочая команда')
+  await page.type('.reset-section input[type="password"]', password)
+  await click('Подтвердить удаление')
+  await page.waitForFunction(() => location.pathname.startsWith('/app/deletions/'))
+  await contains('Пространство удалено')
+  await click('К рабочим пространствам')
+  await contains('Другая команда')
+  assert.ok(!(await page.evaluate(() => document.body.innerText.includes('Рабочая команда'))))
   assert.deepEqual(errors, [])
-  console.log('PASS: auth, two isolated browser sessions and organizations, invitations, roles, ownership transfer and leaving')
+  console.log('PASS: auth, organization isolation, invitations, roles, ownership transfer, leaving and deletion')
 } catch (error) {
   console.error('Page:', await page.evaluate(() => `${location.pathname}\n${document.body.innerText}`))
   throw error

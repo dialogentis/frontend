@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { CredentialsPage, EmailPage, ResetPage } from './pages/Auth'
 import { InvitationPage, OrganizationsPage, RequireSession, WorkspacePage } from './pages/Organizations'
+import { DeletionStatusPage } from './pages/Deletion'
 
 export function Root() {
   return <Routes>
@@ -12,6 +13,7 @@ export function Root() {
     <Route path="/reset-password" element={<ResetPage/>}/>
     <Route path="/invitations/accept" element={<InvitationPage/>}/>
     <Route path="/app/organizations" element={<RequireSession><OrganizationsPage/></RequireSession>}/>
+    <Route path="/app/deletions/:jobId" element={<RequireSession><DeletionStatusPage/></RequireSession>}/>
     <Route path="/app/o/:orgId" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="/app/o/:orgId/members" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="*" element={<Navigate to="/app/organizations" replace/>}/>

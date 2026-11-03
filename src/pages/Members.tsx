@@ -3,12 +3,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api, check } from '../api'
 import type { components } from '../api/schema'
+import { DeletionPanel } from './Deletion'
 
 type Role = components['schemas']['MemberRoleView']['role']
 type OrgRole = components['schemas']['OrganizationView']['role']
 const labels = { owner: 'Владелец', admin: 'Администратор', editor: 'Редактор', viewer: 'Наблюдатель' }
 
-export function MembersPage({ orgId, role, userId }: { orgId: string; role: OrgRole; userId: string }) {
+export function MembersPage({ orgId, name, role, userId }: { orgId: string; name: string; role: OrgRole; userId: string }) {
   const cache = useQueryClient()
   const navigate = useNavigate()
   const canManage = role === 'owner' || role === 'admin'
@@ -76,5 +77,6 @@ export function MembersPage({ orgId, role, userId }: { orgId: string; role: OrgR
       const r = await api.POST('/api/v1/organizations/{org_id}/transfer-ownership', { params: { path: { org_id: orgId } }, body: { new_owner_user_id: target, password } }); check(r.response, r.error); setPassword(''); setTarget(''); setInviteRole('editor')
     }, 'Владение передано.') }}><h2>Передать владение</h2><p className="field-help">После передачи вы станете администратором пространства.</p><div className="inline-create-fields"><label className="field-label">Новый владелец<select required value={target} onChange={e => setTarget(e.target.value)}><option value="">Выберите участника</option>{members.data.filter(member => member.user_id !== userId).map(member => <option value={member.user_id} key={member.user_id}>{member.email}</option>)}</select></label><label className="field-label">Ваш пароль<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)}/></label><button className="button button-quiet" disabled={busy}>Передать владение</button></div></form>}
     {role !== 'owner' && <button className="button button-quiet transfer-form" disabled={busy} onClick={leave}>Покинуть пространство</button>}
+    {role === 'owner' && <DeletionPanel orgId={orgId} name={name}/>}
   </>
 }
