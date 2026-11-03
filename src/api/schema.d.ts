@@ -538,6 +538,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{org_id}/agents/{agent_id}/draft/dataset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dataset */
+        get: operations["get_dataset_api_v1_organizations__org_id__agents__agent_id__draft_dataset_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{org_id}/agents/{agent_id}/draft/validate": {
         parameters: {
             query?: never;
@@ -708,6 +725,21 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** Dataset */
+        Dataset: {
+            /** Intents */
+            intents: components["schemas"]["Intent"][];
+            /** Entities */
+            entities: components["schemas"]["Entity"][];
+            /** Examples */
+            examples: components["schemas"]["Example"][];
+        };
+        /** DatasetView */
+        DatasetView: {
+            /** Revision */
+            revision: number;
+            dataset: components["schemas"]["Dataset"];
+        };
         /** DeletionInput */
         DeletionInput: {
             /** Password */
@@ -734,6 +766,13 @@ export interface components {
             status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
             /** Error Code */
             error_code: string | null;
+        };
+        /** DictionaryValue */
+        DictionaryValue: {
+            /** Value */
+            value: string;
+            /** Synonyms */
+            synonyms?: string[];
         };
         /** DraftConfig */
         DraftConfig: {
@@ -783,6 +822,37 @@ export interface components {
              */
             email: string;
         };
+        /** Entity */
+        Entity: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Value Type
+             * @enum {string}
+             */
+            value_type: "string" | "integer" | "number" | "boolean" | "date";
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "learned" | "dictionary" | "regex";
+            /** Dictionary */
+            dictionary?: components["schemas"]["DictionaryValue"][];
+            /** Pattern */
+            pattern?: string | null;
+            /**
+             * Group
+             * @default 0
+             */
+            group: number | string;
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -802,6 +872,30 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
+        };
+        /** Example */
+        Example: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Text */
+            text: string;
+            /** Intent Id */
+            intent_id?: string | null;
+            /**
+             * Expected Fallback
+             * @default false
+             */
+            expected_fallback: boolean;
+            /**
+             * Split
+             * @enum {string}
+             */
+            split: "train" | "test";
+            /** Spans */
+            spans?: components["schemas"]["Span"][];
         };
         /** Flow */
         Flow: {
@@ -861,6 +955,28 @@ export interface components {
                 [key: string]: components["schemas"]["JsonValue"];
             };
             position: components["schemas"]["Position"];
+        };
+        /** Intent */
+        Intent: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
         };
         /** InvitationInput */
         InvitationInput: {
@@ -1036,6 +1152,20 @@ export interface components {
              * @enum {string}
              */
             role: "admin" | "editor" | "viewer";
+        };
+        /** Span */
+        Span: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /** Text */
+            text?: string | null;
         };
         /** TokenInput */
         TokenInput: {
@@ -6004,6 +6134,137 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Locked */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_dataset_api_v1_organizations__org_id__agents__agent_id__draft_dataset_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetView"];
+                };
             };
             /** @description Bad Request */
             400: {
