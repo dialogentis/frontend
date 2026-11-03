@@ -7,6 +7,19 @@ const mailbox = process.env.MAILPIT_URL || 'http://localhost:18125'
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true })
 const errors = []
 const page = await browser.newPage()
+await page.evaluateOnNewDocument(() => {
+  const originalFetch = window.fetch.bind(window)
+  window.fetch = async (input, init) => {
+    const response = await originalFetch(input, init)
+    const url = input instanceof Request ? input.url : String(input)
+    const method = input instanceof Request ? input.method : init?.method
+    if (window.__dropDraftResponse && method === 'PUT' && url.includes('/draft')) {
+      window.__dropDraftResponse = false
+      throw new TypeError('Simulated lost response')
+    }
+    return response
+  }
+})
 page.setDefaultTimeout(10000)
 page.on('pageerror', error => errors.push(error.message))
 const email = `browser-${randomUUID()}@example.com`
@@ -77,6 +90,73 @@ try {
   await page.keyboard.press('Backspace')
   await page.type('[name="agent_name"]', 'Консультант')
   await click('Сохранить')
+  await page.waitForSelector('[aria-label="В архив Консультант"]')
+  await click('Консультант')
+  await page.waitForFunction(() => location.pathname.includes('/agents/'))
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
+  await click('Начать редактирование')
+  await contains('Сохранено')
+  if (process.env.SCREENSHOT_PATH) await page.screenshot({ path: process.env.SCREENSHOT_PATH })
+  if (process.env.DARK_SCREENSHOT_PATH) {
+    await page.click('[aria-label="Включить тёмную тему"]')
+    await page.screenshot({ path: process.env.DARK_SCREENSHOT_PATH })
+    await page.click('[aria-label="Включить светлую тему"]')
+  }
+  const secondTab = await browser.newPage()
+  try {
+    await secondTab.setViewport({ width: 1280, height: 800 })
+    await secondTab.goto(page.url(), { waitUntil: 'networkidle0' })
+    await secondTab.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
+    await secondTab.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Начать редактирование').click())
+    await secondTab.waitForFunction(() => document.body.innerText.includes('Агент уже редактируется'))
+  } finally { await secondTab.close() }
+  await click('Добавить ответ')
+  await page.waitForFunction(() => [...document.querySelectorAll('.react-flow__node')].some(node => node.textContent.trim() === 'Ответ'))
+  await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
+  await page.type('[name="draft_node_text"]', 'Здравствуйте, чем помочь?')
+  const backConfirmation = new Promise(resolve => page.once('dialog', async dialog => { await dialog.dismiss(); resolve() }))
+  await page.evaluate(() => history.back())
+  await Promise.race([backConfirmation, new Promise((_, reject) => setTimeout(() => reject(new Error('Back navigation did not warn about unsaved changes')), 5000))])
+  assert.ok(await page.evaluate(() => location.pathname.includes('/agents/')))
+  page.once('dialog', dialog => dialog.dismiss())
+  await click('Выйти')
+  assert.ok(await page.evaluate(() => location.pathname.includes('/agents/')))
+  page.once('dialog', dialog => dialog.dismiss())
+  await click('← К агентам')
+  assert.ok(await page.evaluate(() => location.pathname.includes('/agents/')))
+  await page.waitForFunction(async () => {
+    const parts = location.pathname.split('/')
+    const data = await (await fetch(`/api/v1/organizations/${parts[3]}/agents/${parts[5]}/draft`)).json()
+    return data.config.flow.nodes.some(node => node.type === 'say' && node.config.text === 'Здравствуйте, чем помочь?')
+  }, { timeout: 10000 })
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
+  await page.evaluate(() => { window.__dropDraftResponse = true })
+  await page.type('[name="draft_node_text"]', '!')
+  await contains('Сохранение не подтверждено')
+  await click('Проверить сохранение')
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
+  await page.reload({ waitUntil: 'networkidle0' })
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
+  await click('Начать редактирование')
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
+  await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
+  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  assert.equal(await page.evaluate(async () => {
+    const csrf = (await (await fetch('/api/v1/auth/me')).json()).csrf_token
+    const parts = location.pathname.split('/')
+    return (await fetch(`/api/v1/organizations/${parts[3]}/agents/${parts[5]}/edit-lease/revoke`, { method: 'POST', headers: { 'X-CSRF-Token': csrf } })).status
+  }), 204)
+  await page.type('[name="draft_node_text"]', '?')
+  await contains('Блокировка утрачена')
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Экспортировать черновик'))
+  page.once('dialog', dialog => dialog.accept())
+  await click('← К агентам')
+  await page.waitForSelector('[aria-label="В архив Консультант"]')
+  await click('Консультант')
+  await page.waitForFunction(() => [...document.querySelectorAll('.react-flow__node')].some(node => node.textContent.trim() === 'Ответ'))
+  await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
+  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  await click('← К агентам')
   await page.waitForSelector('[aria-label="В архив Консультант"]')
   await page.click('[aria-label="В архив Консультант"]')
   await click('Архив')

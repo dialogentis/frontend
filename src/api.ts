@@ -4,6 +4,7 @@ import type { components, paths } from './api/schema'
 export const api = createClient<paths>({ baseUrl: '' })
 let csrf: string | null = null
 export function setCsrf(value: string | null) { csrf = value }
+export function getCsrf() { return csrf }
 api.use({
   onRequest({ request }) {
     if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) request.headers.set('X-CSRF-Token', csrf)

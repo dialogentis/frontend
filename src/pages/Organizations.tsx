@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -11,6 +11,7 @@ import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
 import { AuthFrame } from './Auth'
 import { MembersPage } from './Members'
 import { WorkspaceAgents } from './WorkspaceAgents'
+const WorkspaceDraft = lazy(() => import('./WorkspaceDraft').then(module => ({ default: module.WorkspaceDraft })))
 
 const schema = z.object({ name: z.string().trim().min(1, 'Укажите название').max(120), slug: z.string().regex(/^[a-z][a-z0-9-]{1,63}$/, 'От 2 до 64 латинских букв, цифр и дефисов') })
 type OrganizationInput = z.infer<typeof schema>
@@ -46,7 +47,7 @@ export function OrganizationsPage() {
 }
 
 export function WorkspacePage() {
-  const { orgId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const location = useLocation(); const cache = useQueryClient(); const [error, setError] = useState(''); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
+  const { orgId, agentId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const location = useLocation(); const cache = useQueryClient(); const [error, setError] = useState(''); const [editorDirty, setEditorDirty] = useState(false); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
   if (orgs.isLoading) return <div className="auth-state" role="status">Загрузка пространства…</div>
   if (orgs.isError) return <div className="auth-state"><h1>Не удалось загрузить пространство</h1><button className="button button-quiet" onClick={() => orgs.refetch()}>Повторить</button></div>
   const current = orgs.data?.find(o => o.id === orgId)
@@ -63,8 +64,8 @@ export function WorkspacePage() {
   </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><span>{current.name}</span></div><div className="topbar-actions">
     <Link className="button button-text workspace-mobile-members" to={membersPage ? root : `${root}/members`}>{membersPage ? 'Агенты' : 'Участники'}</Link>
     <button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
-    <button className="button button-text" onClick={() => logout().then(() => navigate('/login')).catch(e => setError(e.message))}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page">
-    {error && <p role="alert" className="auth-error">{error}</p>}{membersPage ? <MembersPage key={current.id} orgId={current.id} name={current.name} role={current.role} userId={session.user.id}/> : <WorkspaceAgents key={current.id} orgId={current.id} role={current.role}/>}
+    <button className="button button-text" onClick={() => { if (!editorDirty || window.confirm('Есть несохранённые изменения. Выйти из аккаунта?')) void logout().then(() => navigate('/login')).catch(e => setError(e.message)) }}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page">
+    {error && <p role="alert" className="auth-error">{error}</p>}{membersPage ? <MembersPage key={current.id} orgId={current.id} name={current.name} role={current.role} userId={session.user.id}/> : agentId ? <Suspense fallback={<p role="status">Загрузка редактора…</p>}><WorkspaceDraft key={agentId} orgId={current.id} agentId={agentId} role={current.role} onDirtyChange={setEditorDirty}/></Suspense> : <WorkspaceAgents key={current.id} orgId={current.id} role={current.role}/>}
   </main></div></div>
 }
 
