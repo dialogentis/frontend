@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node scripts/test-sanitize.mjs",
+    "test:unit": "node --test scripts/test-*.mjs",
     "test:smoke": "node scripts/smoke.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "api:generate": "openapi-typescript ../backend/openapi.json -o src/api/schema.d.ts"
