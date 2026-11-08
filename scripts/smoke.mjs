@@ -96,6 +96,21 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
   await click('Начать редактирование')
   await contains('Сохранено')
+  await click('Намерения')
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Добавить намерение'))
+  await click('Добавить намерение')
+  await page.$eval('[name="intent_name"]', input => input.select())
+  await page.type('[name="intent_name"]', 'Статус заказа')
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
+  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('name')), 'intent_name')
+  await page.$eval('[name="intent_code"]', input => input.select())
+  await page.keyboard.press('Backspace')
+  await page.waitForFunction(() => document.querySelector('[name="intent_code"]')?.getAttribute('aria-invalid') === 'true')
+  await contains('Сохранение не подтверждено')
+  await page.type('[name="intent_code"]', 'order_status')
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
+  if (process.env.INTENT_SCREENSHOT_PATH) await page.screenshot({ path: process.env.INTENT_SCREENSHOT_PATH })
+  await click('Сценарий')
   if (process.env.SCREENSHOT_PATH) await page.screenshot({ path: process.env.SCREENSHOT_PATH })
   if (process.env.DARK_SCREENSHOT_PATH) {
     await page.click('[aria-label="Включить тёмную тему"]')
@@ -156,6 +171,8 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('.react-flow__node')].some(node => node.textContent.trim() === 'Ответ'))
   await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
   assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  await click('Намерения')
+  await contains('Статус заказа')
   await click('← К агентам')
   await page.waitForSelector('[aria-label="В архив Консультант"]')
   await page.click('[aria-label="Копировать Консультант"]')
@@ -166,6 +183,8 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('.react-flow__node')].some(node => node.textContent.trim() === 'Ответ'))
   await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
   assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  await click('Намерения')
+  await contains('Статус заказа')
   await click('← К агентам')
   await page.waitForSelector('[aria-label="В архив Консультант"]')
   await page.click('[aria-label="В архив Консультант"]')
@@ -317,6 +336,6 @@ try {
   assert.deepEqual(errors, [])
   console.log('PASS: auth, agents, organization isolation, invitations, roles, ownership transfer, leaving and deletion')
 } catch (error) {
-  console.error('Page:', await page.evaluate(() => `${location.pathname}\n${document.body.innerText}`))
+  try { console.error('Page:', await page.evaluate(() => `${location.pathname}\n${document.body.innerText}`)) } catch { console.error('Page unavailable') }
   throw error
 } finally { await browser.close() }

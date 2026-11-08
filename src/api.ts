@@ -13,11 +13,11 @@ api.use({
 })
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message) }
+  constructor(public status: number, message: string, public details: { message?: unknown }[] = []) { super(message) }
 }
 
 export function check(response: Response, error: unknown): void {
   if (response.ok) return
   const body = error as components['schemas']['ErrorResponse'] | undefined
-  throw new ApiError(response.status, body?.error?.message || 'Не удалось выполнить запрос')
+  throw new ApiError(response.status, body?.error?.message || 'Не удалось выполнить запрос', body?.error?.details || [])
 }

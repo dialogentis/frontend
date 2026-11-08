@@ -5,6 +5,8 @@ import { Background, Controls, Position, ReactFlow, useNodesState } from '@xyflo
 import type { Connection, Node, OnNodeDrag } from '@xyflow/react'
 import { api, ApiError, check, getCsrf } from '../api'
 import type { components } from '../api/schema'
+import { withoutSecrets } from '../sanitize'
+import { IntentPanel } from './IntentPanel'
 
 type Draft = components['schemas']['DraftView']
 type Config = components['schemas']['DraftConfig']
@@ -24,6 +26,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
   const [state, setState] = useState<SaveState>('saved')
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
+  const [section, setSection] = useState<'flow' | 'intents'>('flow')
   const [busy, setBusy] = useState(false)
   const [narrow, setNarrow] = useState(() => window.innerWidth <= 960)
   const [changes, setChanges] = useState(0)
@@ -81,7 +84,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
     const config = mutate(draftRef.current.config)
     if (config === draftRef.current.config) return
     const next = { ...draftRef.current, config }
-    draftRef.current = next; changesRef.current += 1; setChanges(changesRef.current); setDraft(next); setState(previous => previous === 'saving' || previous === 'offline' ? previous : 'dirty'); if (!uncertain.current) setError('')
+    draftRef.current = next; changesRef.current += 1; setChanges(changesRef.current); setDraft(next); setState(previous => previous === 'saving' || (previous === 'offline' && uncertain.current) ? previous : 'dirty'); if (!uncertain.current) setError('')
   }
   const save = useCallback(async () => {
     const current = draftRef.current, currentLease = leaseRef.current
@@ -99,7 +102,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
       if (!leaseRef.current) { setState('lost'); setError('Блокировка утрачена. Локальные изменения можно экспортировать.') }
       else if (e instanceof ApiError && [403, 404, 423].includes(e.status)) lose('Блокировка утрачена или доступ изменился. Локальные изменения можно экспортировать.')
       else if (e instanceof ApiError && e.status === 412) { setState('conflict'); setError('Черновик изменился на сервере. Экспортируйте локальные изменения перед обновлением.') }
-      else if (e instanceof ApiError && e.status >= 400 && e.status < 500) { setState('offline'); setError(e.message) }
+      else if (e instanceof ApiError && e.status >= 400 && e.status < 500) { setState('offline'); setError(e.details.map(detail => typeof detail.message === 'string' ? detail.message : '').filter(Boolean).slice(0, 3).join(' ') || e.message) }
       else { uncertain.current = { config: snapshot, revision, generation }; setState('offline'); setError('Сохранение не подтверждено. Проверьте соединение и повторите проверку.') }
     } finally { savingRef.current = false }
   }, [orgId, agentId, lose, cache])
@@ -141,7 +144,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
   }
   const download = () => {
     if (!draftRef.current) return
-    const url = URL.createObjectURL(new Blob([JSON.stringify({ schema_version: 1, config: draftRef.current.config }, null, 2)], { type: 'application/json' }))
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ schema_version: 1, config: withoutSecrets(draftRef.current.config) }, null, 2)], { type: 'application/json' }))
     const link = document.createElement('a'); link.href = url; link.download = 'dialogentis-draft.json'; link.click(); URL.revokeObjectURL(url)
   }
   if (initial.isError || agent.isError) return <div className="data-state"><h1>Не удалось загрузить агента</h1><Link to={`/app/o/${orgId}`}>К агентам</Link></div>
@@ -154,10 +157,11 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
   const connect = (connection: Connection) => { if (!connection.source || !connection.target) return; edit(config => { const source = config.flow.nodes.find(node => node.id === connection.source); const target = config.flow.nodes.find(node => node.id === connection.target); const handle = source?.type === 'switch_intent' ? 'fallback' : 'next'; if (!source || !target || target.type === 'start' || !['start', 'say', 'switch_intent'].includes(source.type) || config.flow.edges.length >= 600 || config.flow.edges.some(edge => edge.source === source.id && edge.source_handle === handle)) return config; return { ...config, flow: { ...config.flow, edges: [...config.flow.edges, { id: crypto.randomUUID(), source: connection.source!, target: connection.target!, source_handle: handle }] } } }) }
   const add = (type: 'say' | 'end') => edit(config => config.flow.nodes.length >= 300 ? config : ({ ...config, flow: { ...config.flow, nodes: [...config.flow.nodes, { id: crypto.randomUUID(), type, config: type === 'say' ? { text: '' } : {}, position: { x: 200, y: 200 + config.flow.nodes.length * 30 } }] } }))
   return <div className="workspace-draft">
-    <div className="page-heading"><div><Link to={`/app/o/${orgId}`}>← К агентам</Link><h1>{agent.data?.name}</h1><p>Сценарий · версия черновика {draft.revision}</p></div><div className="draft-actions">{!lease && role !== 'viewer' && !dirty && !narrow && <button className="button button-primary" disabled={busy} onClick={() => void begin()}>Начать редактирование</button>}{dirty && <button className="button button-quiet" onClick={download}>Экспортировать черновик</button>}</div></div>
+    <div className="page-heading"><div><Link to={`/app/o/${orgId}`}>← К агентам</Link><h1>{agent.data?.name}</h1><p>Версия черновика {draft.revision}</p></div><div className="draft-actions">{!lease && role !== 'viewer' && !dirty && !narrow && <button className="button button-primary" disabled={busy} onClick={() => void begin()}>Начать редактирование</button>}{role !== 'viewer' && <button className="button button-quiet" onClick={download}>Экспортировать черновик</button>}</div></div>
     <p role="status" className="field-help">{state === 'lost' ? 'Блокировка утрачена' : state === 'conflict' ? 'Конфликт версий' : lease ? ({ saved: 'Сохранено', dirty: 'Есть несохранённые изменения', saving: 'Сохранение…', offline: 'Сохранение не подтверждено', lost: 'Блокировка утрачена', conflict: 'Конфликт версий' }[state]) : draft.lease ? `Редактирует ${draft.lease.holder_name}` : 'Режим просмотра'}</p>
     {narrow && <p className="field-help">Редактирование сценария доступно на компьютере.</p>}{error && <p role="alert" className="auth-error">{error}</p>}{state === 'offline' && lease && <button className="button button-quiet" disabled={busy} onClick={() => void retry()}>Проверить сохранение</button>}
-    <div className="draft-toolbar">{editable && <><button className="button button-quiet" onClick={() => add('say')}>Добавить ответ</button><button className="button button-quiet" onClick={() => add('end')}>Добавить завершение</button></>}<span className="field-help">Выберите блок, чтобы посмотреть его свойства.</span></div>
-    <div className="draft-editor"><div className="draft-canvas"><ReactFlow nodes={nodes} edges={edges} nodesDraggable={editable} nodesConnectable={editable} elementsSelectable deleteKeyCode={editable ? ['Backspace', 'Delete'] : null} onNodesChange={onNodesChange} onNodeClick={(_, node) => setSelected(node.id)} onNodeDragStop={onDragStop} onConnect={connect} onBeforeDelete={async ({ nodes: removed }) => !removed.some(node => draft.config.flow.nodes.some(item => item.id === node.id && item.type === 'start'))} onNodesDelete={removed => edit(config => { const ids = new Set(removed.map(node => node.id)); return { ...config, flow: { ...config.flow, nodes: config.flow.nodes.filter(node => !ids.has(node.id)), edges: config.flow.edges.filter(edge => !ids.has(edge.source) && !ids.has(edge.target)) } } })} onEdgesDelete={removed => edit(config => { const ids = new Set(removed.map(edge => edge.id)); return { ...config, flow: { ...config.flow, edges: config.flow.edges.filter(edge => !ids.has(edge.id)) } } })} fitView><Background/><Controls/></ReactFlow></div><aside className="draft-inspector">{current ? <><h2>{names[current.type]}</h2><p className="field-help">{current.id}</p>{['say', 'fallback'].includes(current.type) && <label className="field-label">Текст ответа<textarea name="draft_node_text" rows={5} maxLength={4000} disabled={!editable} value={typeof current.config.text === 'string' ? current.config.text : ''} onChange={event => { const text = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, text } } : node) } })) }}/></label>}</> : <p className="muted">Выберите блок на схеме.</p>}</aside></div>
+    <div className="filter-tabs draft-sections" role="tablist" aria-label="Раздел агента"><button type="button" role="tab" aria-selected={section === 'flow'} onClick={() => setSection('flow')}>Сценарий</button><button type="button" role="tab" aria-selected={section === 'intents'} onClick={() => setSection('intents')}>Намерения</button></div>
+    {section === 'intents' ? <IntentPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/> : <><div className="draft-toolbar">{editable && <><button className="button button-quiet" onClick={() => add('say')}>Добавить ответ</button><button className="button button-quiet" onClick={() => add('end')}>Добавить завершение</button></>}<span className="field-help">Выберите блок, чтобы посмотреть его свойства.</span></div>
+    <div className="draft-editor"><div className="draft-canvas"><ReactFlow nodes={nodes} edges={edges} nodesDraggable={editable} nodesConnectable={editable} elementsSelectable deleteKeyCode={editable ? ['Backspace', 'Delete'] : null} onNodesChange={onNodesChange} onNodeClick={(_, node) => setSelected(node.id)} onNodeDragStop={onDragStop} onConnect={connect} onBeforeDelete={async ({ nodes: removed }) => !removed.some(node => draft.config.flow.nodes.some(item => item.id === node.id && item.type === 'start'))} onNodesDelete={removed => edit(config => { const ids = new Set(removed.map(node => node.id)); return { ...config, flow: { ...config.flow, nodes: config.flow.nodes.filter(node => !ids.has(node.id)), edges: config.flow.edges.filter(edge => !ids.has(edge.source) && !ids.has(edge.target)) } } })} onEdgesDelete={removed => edit(config => { const ids = new Set(removed.map(edge => edge.id)); return { ...config, flow: { ...config.flow, edges: config.flow.edges.filter(edge => !ids.has(edge.id)) } } })} fitView><Background/><Controls/></ReactFlow></div><aside className="draft-inspector">{current ? <><h2>{names[current.type]}</h2><p className="field-help">{current.id}</p>{['say', 'fallback'].includes(current.type) && <label className="field-label">Текст ответа<textarea name="draft_node_text" rows={5} maxLength={4000} disabled={!editable} value={typeof current.config.text === 'string' ? current.config.text : ''} onChange={event => { const text = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, text } } : node) } })) }}/></label>}</> : <p className="muted">Выберите блок на схеме.</p>}</aside></div></>}
   </div>
 }
