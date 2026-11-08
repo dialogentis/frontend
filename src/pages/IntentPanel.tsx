@@ -14,7 +14,7 @@ function phraseCount(count: number): string {
   return `${count} ${mod100 >= 11 && mod100 <= 14 ? 'фраз' : mod10 === 1 ? 'фраза' : mod10 >= 2 && mod10 <= 4 ? 'фразы' : 'фраз'}`
 }
 
-function containsReference(value: unknown, target: string): boolean {
+export function containsReference(value: unknown, target: string): boolean {
   if (typeof value === 'string') return value === target
   if (Array.isArray(value)) return value.some(item => containsReference(item, target))
   if (value && typeof value === 'object') return Object.entries(value).some(([key, item]) => key === target || containsReference(item, target))
