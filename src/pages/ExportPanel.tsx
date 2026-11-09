@@ -19,7 +19,7 @@ export function ExportPanel({ orgId, agentId, enabled }: { orgId: string; agentI
   const [now, setNow] = useState(Date.now())
   const job = useQuery({
     queryKey: ['export-job', orgId, jobId], enabled: !!jobId, retry: false,
-    queryFn: async ({ signal }) => { const result = await api.GET('/api/v1/organizations/{org_id}/jobs/{job_id}', { params: { path: { org_id: orgId, job_id: jobId! } }, signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]) }); check(result.response, result.error); if (!result.data) throw new Error('Некорректный ответ сервера'); return result.data },
+    queryFn: async ({ signal }) => { const result = await api.GET('/api/v1/organizations/{org_id}/jobs/{job_id}', { params: { path: { org_id: orgId, job_id: jobId! } }, signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]) }); check(result.response, result.error); if (!result.data || !('export_id' in result.data)) throw new Error('Некорректный ответ сервера'); return result.data },
     refetchInterval: query => document.hidden || (query.state.error instanceof ApiError && [403, 404].includes(query.state.error.status)) || (query.state.data && terminal.has(query.state.data.status)) ? false : Date.now() - started < 30_000 ? 2000 : 5000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -47,7 +47,7 @@ export function ExportPanel({ orgId, agentId, enabled }: { orgId: string; agentI
     setBusy(true); setError('')
     try {
       const result = await api.POST('/api/v1/organizations/{org_id}/jobs/{job_id}/cancel', { params: { path: { org_id: orgId, job_id: jobId } }, signal: AbortSignal.timeout(10_000) }); check(result.response, result.error)
-      if (result.data) cache.setQueryData(['export-job', orgId, jobId], result.data)
+      if (result.data && 'export_id' in result.data) cache.setQueryData(['export-job', orgId, jobId], result.data)
     } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось отменить экспорт'); void job.refetch() }
     finally { setBusy(false) }
   }

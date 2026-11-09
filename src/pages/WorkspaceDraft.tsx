@@ -10,6 +10,7 @@ import { IntentPanel } from './IntentPanel'
 import { EntityPanel } from './EntityPanel'
 import { ExamplePanel } from './ExamplePanel'
 import { ExportPanel } from './ExportPanel'
+import { ImportPanel } from './ImportPanel'
 
 type Draft = components['schemas']['DraftView']
 type Config = components['schemas']['DraftConfig']
@@ -31,6 +32,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
   const [selected, setSelected] = useState<string | null>(null)
   const [section, setSection] = useState<'flow' | 'intents' | 'entities' | 'examples'>('flow')
   const [busy, setBusy] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [narrow, setNarrow] = useState(() => window.innerWidth <= 960)
   const [changes, setChanges] = useState(0)
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
@@ -38,9 +40,10 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
   const leaseRef = useRef<Grant | null>(null)
   const changesRef = useRef(0)
   const savingRef = useRef(false)
+  const importingRef = useRef(false)
   const mounted = useRef(false)
   const uncertain = useRef<{ config: Config; revision: number; generation: number } | null>(null)
-  const dirty = state !== 'saved'
+  const dirty = state !== 'saved' || importing
   useEffect(() => { onDirtyChange(dirty); return () => onDirtyChange(false) }, [dirty, onDirtyChange])
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname)
   const agent = useQuery({ queryKey: ['agent', orgId, agentId], queryFn: async () => { const r = await api.GET('/api/v1/organizations/{org_id}/agents/{agent_id}', { params: { path } }); check(r.response, r.error); if (!r.data) throw new Error('Некорректный ответ сервера'); return r.data } })
@@ -83,7 +86,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
     return () => window.clearInterval(timer)
   }, [lease?.lease_token, orgId, agentId, lose])
   const edit = (mutate: (config: Config) => Config) => {
-    if (!draftRef.current || !leaseRef.current || narrow) return
+    if (!draftRef.current || !leaseRef.current || narrow || importingRef.current) return
     const config = mutate(draftRef.current.config)
     if (config === draftRef.current.config) return
     const next = { ...draftRef.current, config }
@@ -153,7 +156,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
   if (initial.isError || agent.isError) return <div className="data-state"><h1>Не удалось загрузить агента</h1><Link to={`/app/o/${orgId}`}>К агентам</Link></div>
   if (initial.isPending || agent.isPending || !draft) return <p role="status">Загрузка агента…</p>
   const current = draft.config.flow.nodes.find(node => node.id === selected)
-  const editable = !!lease && !narrow && !['lost', 'conflict'].includes(state)
+  const editable = !!lease && !narrow && !importing && !['lost', 'conflict'].includes(state)
   const edgeLabels: Record<string, string> = { next: 'Далее', fallback: 'Не распознано', success: 'Успешно', error: 'Ошибка', returned: 'Возврат', else: 'Иначе' }
   const edges = draft.config.flow.edges.map(edge => ({ id: edge.id, source: edge.source, target: edge.target, label: edgeLabels[edge.source_handle] || '' }))
   const onDragStop: OnNodeDrag = (_, node) => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(item => item.id === node.id ? { ...item, position: node.position } : item) } }))
@@ -164,7 +167,7 @@ export function WorkspaceDraft({ orgId, agentId, role, onDirtyChange }: { orgId:
     <p role="status" className="field-help">{state === 'lost' ? 'Блокировка утрачена' : state === 'conflict' ? 'Конфликт версий' : lease ? ({ saved: 'Сохранено', dirty: 'Есть несохранённые изменения', saving: 'Сохранение…', offline: 'Сохранение не подтверждено', lost: 'Блокировка утрачена', conflict: 'Конфликт версий' }[state]) : draft.lease ? `Редактирует ${draft.lease.holder_name}` : 'Режим просмотра'}</p>
     {narrow && <p className="field-help">Редактирование сценария доступно на компьютере.</p>}{error && <p role="alert" className="auth-error">{error}</p>}{state === 'offline' && lease && <button className="button button-quiet" disabled={busy} onClick={() => void retry()}>Проверить сохранение</button>}
     <div className="filter-tabs draft-sections" role="tablist" aria-label="Раздел агента"><button type="button" role="tab" aria-selected={section === 'flow'} onClick={() => setSection('flow')}>Сценарий</button><button type="button" role="tab" aria-selected={section === 'intents'} onClick={() => setSection('intents')}>Намерения</button><button type="button" role="tab" aria-selected={section === 'entities'} onClick={() => setSection('entities')}>Сущности</button><button type="button" role="tab" aria-selected={section === 'examples'} onClick={() => setSection('examples')}>Примеры</button></div>
-    {section === 'intents' ? <IntentPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/> : section === 'entities' ? <EntityPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} previewEnabled={role !== 'viewer' && state === 'saved'} update={edit}/> : section === 'examples' ? <ExamplePanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/> : <><div className="draft-toolbar">{editable && <><button className="button button-quiet" onClick={() => add('say')}>Добавить ответ</button><button className="button button-quiet" onClick={() => add('end')}>Добавить завершение</button></>}<span className="field-help">Выберите блок, чтобы посмотреть его свойства.</span></div>
+    {section === 'intents' ? <IntentPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/> : section === 'entities' ? <EntityPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} previewEnabled={role !== 'viewer' && state === 'saved'} update={edit}/> : section === 'examples' ? <>{role !== 'viewer' && <ImportPanel key={`${orgId}:${agentId}`} orgId={orgId} agentId={agentId} revision={draft.revision} lease={narrow ? null : lease} enabled={state === 'saved' && !importing} onApplying={value => { importingRef.current = value; setImporting(value) }} onImported={value => { draftRef.current = value; setDraft(value); setState('saved'); uncertain.current = null; cache.setQueryData(['draft', orgId, agentId], value); void cache.invalidateQueries({ queryKey: ['dataset', orgId, agentId] }) }} onUncertain={() => { setState('conflict'); setError('Применение импорта не подтверждено. Сохраните локальную копию и обновите страницу.') }}/>}<ExamplePanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/></> : <><div className="draft-toolbar">{editable && <><button className="button button-quiet" onClick={() => add('say')}>Добавить ответ</button><button className="button button-quiet" onClick={() => add('end')}>Добавить завершение</button></>}<span className="field-help">Выберите блок на схеме.</span></div>
     <div className="draft-editor"><div className="draft-canvas"><ReactFlow nodes={nodes} edges={edges} nodesDraggable={editable} nodesConnectable={editable} elementsSelectable deleteKeyCode={editable ? ['Backspace', 'Delete'] : null} onNodesChange={onNodesChange} onNodeClick={(_, node) => setSelected(node.id)} onNodeDragStop={onDragStop} onConnect={connect} onBeforeDelete={async ({ nodes: removed }) => !removed.some(node => draft.config.flow.nodes.some(item => item.id === node.id && item.type === 'start'))} onNodesDelete={removed => edit(config => { const ids = new Set(removed.map(node => node.id)); return { ...config, flow: { ...config.flow, nodes: config.flow.nodes.filter(node => !ids.has(node.id)), edges: config.flow.edges.filter(edge => !ids.has(edge.source) && !ids.has(edge.target)) } } })} onEdgesDelete={removed => edit(config => { const ids = new Set(removed.map(edge => edge.id)); return { ...config, flow: { ...config.flow, edges: config.flow.edges.filter(edge => !ids.has(edge.id)) } } })} fitView><Background/><Controls/></ReactFlow></div><aside className="draft-inspector">{current ? <><h2>{names[current.type]}</h2><p className="field-help">{current.id}</p>{['say', 'fallback'].includes(current.type) && <label className="field-label">Текст ответа<textarea name="draft_node_text" rows={5} maxLength={4000} disabled={!editable} value={typeof current.config.text === 'string' ? current.config.text : ''} onChange={event => { const text = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, text } } : node) } })) }}/></label>}</> : <p className="muted">Выберите блок на схеме.</p>}</aside></div></>}
   </div>
 }

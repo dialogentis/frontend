@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
+import { writeFile, unlink } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import puppeteer from 'puppeteer-core'
 
 const base = process.env.BASE_URL || 'http://localhost:18180'
 const mailbox = process.env.MAILPIT_URL || 'http://localhost:18125'
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true })
 const errors = []
+const temporaryFiles = []
 const page = await browser.newPage()
 await page.evaluateOnNewDocument(() => {
   const originalFetch = window.fetch.bind(window)
@@ -178,6 +182,38 @@ try {
   const csv = await page.$eval('.export-status a', async link => (await (await fetch(link.href)).text()))
   assert.ok(csv.startsWith('text,intent,split,entities'))
   await page.click('.export-menu > summary')
+  await page.click('.import-panel > summary')
+  const invalidCsv = join(tmpdir(), `dialogentis-invalid-${randomUUID()}.csv`)
+  const validCsv = join(tmpdir(), `dialogentis-valid-${randomUUID()}.csv`)
+  const jsonPath = join(tmpdir(), `dialogentis-config-${randomUUID()}.json`)
+  temporaryFiles.push(invalidCsv, validCsv, jsonPath)
+  await writeFile(invalidCsv, 'text,intent,split,entities\nОшибка,missing,test,[]\n')
+  await writeFile(validCsv, 'text,intent,split,entities\nИмпортированная фраза,order_status,test,[]\n')
+  await writeFile(jsonPath, JSON.stringify(exported))
+  await (await page.$('[aria-label="Файл импорта"]')).uploadFile(invalidCsv)
+  await click('Проверить файл')
+  await page.waitForFunction(() => document.querySelector('.import-report .error-text')?.textContent.includes('Намерение не найдено'), { timeout: 30000 })
+  const exampleCount = () => page.evaluate(async () => { const p = location.pathname.split('/'); return (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config.examples.length })
+  assert.equal(await exampleCount(), 2)
+  await (await page.$('[aria-label="Файл импорта"]')).uploadFile(validCsv)
+  await click('Проверить файл')
+  await page.waitForFunction(() => document.querySelector('.import-report')?.textContent.includes('Ошибок не найдено'), { timeout: 30000 })
+  if (process.env.IMPORT_SCREENSHOT_PATH) await page.screenshot({ path: process.env.IMPORT_SCREENSHOT_PATH })
+  assert.equal(await exampleCount(), 2)
+  await click('Применить импорт')
+  await page.waitForFunction(() => [...document.querySelectorAll('.intent-list button')].some(button => button.textContent.includes('Импортированная фраза')))
+  assert.equal(await exampleCount(), 3)
+  assert.equal(await page.$eval('[aria-label="Файл импорта"]', input => input.value), '')
+  await (await page.$('[aria-label="Файл импорта"]')).uploadFile(validCsv)
+  await page.waitForFunction(() => document.querySelector('.import-file-name')?.textContent.includes('dialogentis-valid-'))
+  await (await page.$('[aria-label="Файл импорта"]')).uploadFile(jsonPath)
+  await page.select('[aria-label="Режим импорта"]', 'replace')
+  await click('Проверить файл')
+  await page.waitForFunction(() => document.querySelector('.import-report')?.textContent.includes('Ошибок не найдено'), { timeout: 30000 })
+  page.once('dialog', dialog => dialog.accept())
+  await click('Применить импорт')
+  await page.waitForFunction(async () => { const p = location.pathname.split('/'); return (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config.examples.length === 2 })
+  await page.click('.import-panel > summary')
   await click('Сценарий')
   if (process.env.SCREENSHOT_PATH) await page.screenshot({ path: process.env.SCREENSHOT_PATH })
   if (process.env.DARK_SCREENSHOT_PATH) {
@@ -424,4 +460,4 @@ try {
 } catch (error) {
   try { console.error('Page:', await page.evaluate(() => `${location.pathname}\n${document.body.innerText}`)) } catch { console.error('Page unavailable') }
   throw error
-} finally { await browser.close() }
+} finally { await Promise.all(temporaryFiles.map(path => unlink(path).catch(() => {}))); await browser.close() }
