@@ -1058,6 +1058,7 @@ export interface components {
             }[];
             flow: components["schemas"]["Flow"];
             nlu_settings?: components["schemas"]["NLUSettings"];
+            quality_settings?: components["schemas"]["QualitySettings"];
         };
         /** DraftInput */
         DraftInput: {
@@ -1761,6 +1762,19 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** QualitySettings */
+        QualitySettings: {
+            /**
+             * Intent F1
+             * @default 0.8
+             */
+            intent_f1: number;
+            /**
+             * Entity F1
+             * @default 0.8
+             */
+            entity_f1: number;
+        };
         /** ReportView */
         ReportView: {
             /**
@@ -1771,6 +1785,7 @@ export interface components {
             /** Training Examples */
             training_examples: number;
             nlu_settings: components["schemas"]["NLUSettings"];
+            quality_settings: components["schemas"]["QualitySettings"];
             intents: components["schemas"]["IntentSummary"];
             entities: components["schemas"]["EntitySummary"];
             /** Intent Catalog */
