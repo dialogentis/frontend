@@ -773,6 +773,12 @@ dialog::backdrop { background: var(--color-overlay); }
 .import-report { margin-top: var(--space-md); padding-top: var(--space-sm); border-top: 1px solid var(--color-rule); font-size: var(--text-data); }
 .import-report p { margin-block: var(--space-xs); }
 .draft-toolbar { padding-block: var(--space-md); }
+.flow-validation { padding-bottom: var(--space-md); }
+.flow-validation-result { margin-top: var(--space-md); padding: var(--space-md); border: 1px solid var(--color-rule); }
+.flow-validation-result h3 { margin: var(--space-md) 0 var(--space-xs); font-size: var(--text-data); }
+.flow-validation-result ul { margin: 0; padding-left: var(--space-lg); }
+.flow-validation-result li { padding-block: var(--space-2xs); font-size: var(--text-data); }
+.flow-validation-result li button { margin-left: var(--space-sm); text-decoration: underline; text-underline-offset: .2em; }
 .draft-editor { display: grid; grid-template-columns: minmax(0, 1fr) 260px; min-height: 520px; border: 1px solid var(--color-rule); }
 .draft-canvas { min-height: 520px; background: var(--color-paper); }
 .draft-canvas .react-flow__node { background: var(--color-paper-2); color: var(--color-ink); border-color: var(--color-rule); }

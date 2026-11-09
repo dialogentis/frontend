@@ -273,6 +273,13 @@ try {
   assert.equal(await page.$$eval('.training-version-list button[aria-pressed]', buttons => buttons.length), 1)
   if (process.env.TRAINING_SCREENSHOT_PATH) await page.screenshot({ path: process.env.TRAINING_SCREENSHOT_PATH })
   await click('Сценарий')
+  await click('Проверить сценарий')
+  await contains('Блок недостижим из начала сценария')
+  await contains('Настройки блоков и готовность к публикации пока не проверены')
+  if (process.env.FLOW_VALIDATION_SCREENSHOT_PATH) await page.screenshot({ path: process.env.FLOW_VALIDATION_SCREENSHOT_PATH })
+  await click('Блок «Завершение»')
+  assert.equal(await page.$eval('.draft-inspector h2', heading => heading.textContent), 'Завершение')
+  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Настройки блока')
   if (process.env.SCREENSHOT_PATH) await page.screenshot({ path: process.env.SCREENSHOT_PATH })
   if (process.env.DARK_SCREENSHOT_PATH) {
     await page.click('[aria-label="Включить тёмную тему"]')
@@ -288,6 +295,9 @@ try {
     await secondTab.waitForFunction(() => document.body.innerText.includes('Агент уже редактируется'))
   } finally { await secondTab.close() }
   await click('Добавить ответ')
+  await contains('Сценарий изменился. Повторите проверку после сохранения.')
+  assert.equal(await page.$eval('.flow-validation > button', button => button.disabled), true)
+  assert.equal(await page.$('.flow-validation-result'), null)
   await page.waitForFunction(() => [...document.querySelectorAll('.react-flow__node')].some(node => node.textContent.trim() === 'Ответ'))
   await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
   await page.type('[name="draft_node_text"]', 'Здравствуйте, чем помочь?')
