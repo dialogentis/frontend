@@ -747,6 +747,15 @@ dialog::backdrop { background: var(--color-overlay); }
 .workspace-agents .organization-row > .row-actions { flex: 0 0 auto; }
 .workspace-agents .organization-row strong, .workspace-agents .organization-row p { overflow-wrap: anywhere; }
 .draft-actions, .draft-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); }
+.export-menu { position: relative; }
+.export-menu > summary { list-style: none; cursor: pointer; }
+.export-menu > summary::-webkit-details-marker { display: none; }
+.export-menu > summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.export-popover { position: absolute; z-index: 20; right: 0; top: calc(100% + 6px); width: min(320px, calc(100vw - 32px)); padding: var(--space-md); border: 1px solid var(--color-rule); background: var(--color-plate); box-shadow: 0 12px 32px var(--color-overlay); }
+.export-popover h3 { margin: 0 0 var(--space-xs); }
+.export-popover .field-label { margin-block: var(--space-md); }
+.export-status { border-top: 1px solid var(--color-rule); margin-top: var(--space-md); padding-top: var(--space-sm); font-size: var(--text-data); }
+.export-status p { margin-block: var(--space-xs); }
 .draft-toolbar { padding-block: var(--space-md); }
 .draft-editor { display: grid; grid-template-columns: minmax(0, 1fr) 260px; min-height: 520px; border: 1px solid var(--color-rule); }
 .draft-canvas { min-height: 520px; background: var(--color-paper); }
