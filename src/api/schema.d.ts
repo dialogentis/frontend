@@ -1057,6 +1057,7 @@ export interface components {
                 [key: string]: components["schemas"]["JsonValue"];
             }[];
             flow: components["schemas"]["Flow"];
+            nlu_settings?: components["schemas"]["NLUSettings"];
         };
         /** DraftInput */
         DraftInput: {
@@ -1693,6 +1694,24 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** NLUSettings */
+        NLUSettings: {
+            /**
+             * Score
+             * @default 0.55
+             */
+            score: number;
+            /**
+             * Margin
+             * @default 0.15
+             */
+            margin: number;
+            /**
+             * Similarity
+             * @default 0.2
+             */
+            similarity: number;
+        };
         /** OrganizationInput */
         OrganizationInput: {
             /** Name */
@@ -1751,6 +1770,7 @@ export interface components {
             version_id: string;
             /** Training Examples */
             training_examples: number;
+            nlu_settings: components["schemas"]["NLUSettings"];
             intents: components["schemas"]["IntentSummary"];
             entities: components["schemas"]["EntitySummary"];
             /** Intent Catalog */

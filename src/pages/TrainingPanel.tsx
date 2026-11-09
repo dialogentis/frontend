@@ -7,6 +7,7 @@ import type { components } from '../api/schema'
 type Version = components['schemas']['VersionView']
 type Report = components['schemas']['ReportView']
 type Role = components['schemas']['OrganizationView']['role']
+type Settings = components['schemas']['NLUSettings']
 type Pending = { revision: number; key: string }
 const labels: Record<Version['status'], string> = { building: 'Подготовка', ready: 'Модель готова', failed: 'Ошибка', cancelled: 'Отменено' }
 const stages: Record<NonNullable<Version['stage']>, string> = { validation: 'Проверка данных', intent_training: 'Обучение намерений', entity_training: 'Обучение сущностей', evaluation: 'Проверка качества', packaging: 'Сохранение модели' }
@@ -15,8 +16,14 @@ const failures: Record<string, string> = { worker_lost: 'Обучение пре
 const reasons: Record<string, string> = { empty_features: 'нет известных признаков', low_score: 'низкая оценка', ambiguous_intent: 'похожие намерения', low_similarity: 'фраза мало похожа на обучающие' }
 const percent = (value: number | null) => value === null ? 'Нет данных' : new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 1 }).format(value)
 const date = (value: string) => new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+export const defaultNluSettings: Settings = { score: 0.55, margin: 0.15, similarity: 0.2 }
+const settingDescriptions: { key: keyof Settings; name: string; description: string }[] = [
+  { key: 'score', name: 'Минимальная оценка', description: 'Минимальная оценка выбранного намерения.' },
+  { key: 'margin', name: 'Разница оценок', description: 'Минимальная разница между двумя лучшими намерениями.' },
+  { key: 'similarity', name: 'Сходство с примерами', description: 'Минимальное сходство запроса с обучающими фразами.' },
+]
 
-export function TrainingPanel({ orgId, agentId, userId, role, revision, enabled, archived }: { orgId: string; agentId: string; userId: string; role: Role; revision: number; enabled: boolean; archived: boolean }) {
+export function TrainingPanel({ orgId, agentId, userId, role, revision, enabled, archived, settings, editable, onSettingsChange }: { orgId: string; agentId: string; userId: string; role: Role; revision: number; enabled: boolean; archived: boolean; settings: Settings; editable: boolean; onSettingsChange: (settings: Settings) => void }) {
   const cache = useQueryClient()
   const path = { org_id: orgId, agent_id: agentId }
   const pendingKey = `dialogentis:training:${userId}:${orgId}:${agentId}`
@@ -65,6 +72,7 @@ export function TrainingPanel({ orgId, agentId, userId, role, revision, enabled,
     {!enabled && !pending && canManage && <p className="field-help">Дождитесь сохранения изменений перед обучением.</p>}
     {archived && canManage && <p className="field-help">Восстановите агента из архива, чтобы запустить обучение.</p>}
     {error && <p role="alert" className="auth-error">{error}</p>}
+    <details className="training-settings"><summary>Пороги распознавания</summary><p className="field-help">Если запрос не достигает любого из порогов, агент использует сценарий нераспознанного запроса. Оценка — показатель модели, а не вероятность правильного ответа. Изменения применятся при следующем обучении.</p>{!editable && canManage && <p className="field-help">Для изменения порогов начните редактирование агента на компьютере.</p>}<div className="training-settings-grid">{settingDescriptions.map(item => <label key={item.key} className="training-setting"><span>{item.name} <strong>{percent(settings[item.key])}</strong></span><input type="range" min="0" max="1" step="0.01" value={settings[item.key]} disabled={!editable} onChange={event => onSettingsChange({ ...settings, [item.key]: Number(event.target.value) })}/><small>{item.description}</small></label>)}</div>{editable && <button type="button" className="button button-quiet" onClick={() => onSettingsChange(defaultNluSettings)}>Вернуть начальные значения</button>}</details>
     {versions.isPending ? <p role="status">Загрузка версий…</p> : versions.isError ? <div className="data-state"><h3>Не удалось загрузить версии</h3><button type="button" className="button button-quiet" onClick={() => void versions.refetch()}>Повторить</button></div> : !items.length ? <div className="data-state"><h3>Версий пока нет</h3><p>Добавьте намерения и примеры, затем обучите агента.</p></div> : <div className="training-workspace">
       <div className="training-version-list" aria-label="Версии агента">{items.map(item => <button type="button" key={item.id} aria-pressed={selected?.id === item.id} onClick={() => setSelectedId(item.id)}><strong>Версия {item.number}</strong><span>{labels[item.status]} · черновик {item.source_revision}</span><small>{date(item.created_at)}</small></button>)}{versions.hasNextPage && <button type="button" disabled={versions.isFetchingNextPage} onClick={() => void versions.fetchNextPage()}>Показать ещё</button>}</div>
       {selected && <div className="training-detail"><div className="section-heading"><div><h3>Версия {selected.number}</h3><p>{labels[selected.status]} · черновик {selected.source_revision} · {date(selected.created_at)}</p></div>{selected.status === 'building' && canCancel && <button type="button" className="button button-quiet" disabled={busy || selected.cancel_requested} onClick={() => void cancel(selected)}>{selected.cancel_requested ? 'Отмена…' : 'Отменить'}</button>}</div>
@@ -84,6 +92,7 @@ function TrainingReport({ report, orgId, agentId }: { report: Report; orgId: str
     <p className="inline-note">Модель обучена. Сценарий ещё не проверен; перед публикацией потребуется его проверка.</p>
     {report.warnings.map(item => <p className="field-help" key={item}>{warnings[item] || 'Проверьте качество модели.'}</p>)}
     <p className="field-help">Обучающих фраз: {report.training_examples} · тестовых: {report.intents.test_count} · неизвестных: {report.intents.unknown_count}</p>
+    <p className="field-help">Пороги версии: оценка {percent(report.nlu_settings.score)} · разница {percent(report.nlu_settings.margin)} · сходство {percent(report.nlu_settings.similarity)}</p>
     <div className="training-metrics"><div><span>F1 намерений</span><strong>{percent(report.intents.macro_f1)}</strong></div><div><span>F1 сущностей</span><strong>{percent(report.entities.f1)}</strong></div><div><span>Отказ на неизвестных</span><strong>{percent(report.intents.unknown_rejection)}</strong></div><div><span>Ошибочный отказ</span><strong>{percent(report.intents.known_fallback_rate)}</strong></div></div>
     <h4>Намерения</h4><div className="training-table-scroll"><table className="training-table"><thead><tr><th scope="col">Намерение</th><th scope="col">Примеров</th><th scope="col">Точность</th><th scope="col">Полнота</th><th scope="col">F1</th></tr></thead><tbody>{report.intents.per_intent.map(item => <tr key={item.intent_id}><th scope="row">{intentName(item.intent_id)}</th><td>{item.support}</td><td>{percent(item.precision)}</td><td>{percent(item.recall)}</td><td>{percent(item.f1)}</td></tr>)}</tbody></table></div>
     {!!report.entities.per_entity.length && <><h4>Сущности</h4><div className="training-table-scroll"><table className="training-table"><thead><tr><th scope="col">Сущность</th><th scope="col">Разметок</th><th scope="col">Точность</th><th scope="col">Полнота</th><th scope="col">F1</th></tr></thead><tbody>{report.entities.per_entity.map(item => <tr key={item.entity_id}><th scope="row">{report.entity_catalog.find(entry => entry.id === item.entity_id)?.name || item.code}</th><td>{item.expected}</td><td>{percent(item.precision)}</td><td>{percent(item.recall)}</td><td>{percent(item.f1)}</td></tr>)}</tbody></table></div><p className="field-help">Ошибок преобразования значений: {report.entities.invalid_values}</p></>}
