@@ -708,6 +708,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{org_id}/agents/{agent_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Versions */
+        get: operations["list_versions_api_v1_organizations__org_id__agents__agent_id__versions_get"];
+        put?: never;
+        /** Create Version */
+        post: operations["create_version_api_v1_organizations__org_id__agents__agent_id__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/agents/{agent_id}/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Version */
+        get: operations["get_version_api_v1_organizations__org_id__agents__agent_id__versions__version_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/agents/{agent_id}/versions/{version_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report */
+        get: operations["get_report_api_v1_organizations__org_id__agents__agent_id__versions__version_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/agents/{agent_id}/versions/{version_id}/report/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report Errors */
+        get: operations["report_errors_api_v1_organizations__org_id__agents__agent_id__versions__version_id__report_errors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health/live": {
         parameters: {
             query?: never;
@@ -834,6 +903,40 @@ export interface components {
              */
             mode: "merge" | "replace";
         };
+        /** CatalogEntry */
+        CatalogEntry: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Code */
+            code: string;
+        };
+        /** ClassMetrics */
+        ClassMetrics: {
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
+            /** Support */
+            support: number;
+            /** True Positive */
+            true_positive: number;
+            /** False Positive */
+            false_positive: number;
+            /** False Negative */
+            false_negative: number;
+            /** Precision */
+            precision: number | null;
+            /** Recall */
+            recall: number | null;
+            /** F1 */
+            f1: number | null;
+        };
         /** Credentials */
         Credentials: {
             /**
@@ -869,6 +972,20 @@ export interface components {
         CursorPage_OrganizationView_: {
             /** Items */
             items: components["schemas"]["OrganizationView"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[Union[IntentErrorView, EntityErrorView]] */
+        CursorPage_Union_IntentErrorView__EntityErrorView__: {
+            /** Items */
+            items: (components["schemas"]["IntentErrorView"] | components["schemas"]["EntityErrorView"])[];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[VersionView] */
+        CursorPage_VersionView_: {
+            /** Items */
+            items: components["schemas"]["VersionView"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -999,6 +1116,81 @@ export interface components {
              * @default 0
              */
             group: number | string;
+        };
+        /** EntityErrorView */
+        EntityErrorView: {
+            /**
+             * Example Id
+             * Format: uuid
+             */
+            example_id: string;
+            /** Text */
+            text: string;
+            /** Missing */
+            missing: components["schemas"]["EntitySpan"][];
+            /** Unexpected */
+            unexpected: components["schemas"]["EntitySpan"][];
+            /** Invalid Values */
+            invalid_values: components["schemas"]["EntitySpan"][];
+        };
+        /** EntityMetrics */
+        EntityMetrics: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Code */
+            code: string;
+            /** Expected */
+            expected: number;
+            /** Predicted */
+            predicted: number;
+            /** True Positive */
+            true_positive: number;
+            /** Precision */
+            precision: number | null;
+            /** Recall */
+            recall: number | null;
+            /** F1 */
+            f1: number | null;
+        };
+        /** EntitySpan */
+        EntitySpan: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+        };
+        /** EntitySummary */
+        EntitySummary: {
+            /** Test Count */
+            test_count: number;
+            /** Excluded Disabled Count */
+            excluded_disabled_count: number;
+            /** Expected */
+            expected: number;
+            /** Predicted */
+            predicted: number;
+            /** True Positive */
+            true_positive: number;
+            /** Precision */
+            precision: number | null;
+            /** Recall */
+            recall: number | null;
+            /** F1 */
+            f1: number | null;
+            /** Invalid Values */
+            invalid_values: number;
+            /** Per Entity */
+            per_entity: components["schemas"]["EntityMetrics"][];
+            /** Error Count */
+            error_count: number;
         };
         /** ErrorDetail */
         ErrorDetail: {
@@ -1310,6 +1502,59 @@ export interface components {
              */
             enabled: boolean;
         };
+        /** IntentErrorView */
+        IntentErrorView: {
+            /**
+             * Example Id
+             * Format: uuid
+             */
+            example_id: string;
+            /** Text */
+            text: string;
+            /** Expected */
+            expected: string | null;
+            /** Predicted */
+            predicted: string | null;
+            /** Fallback Reasons */
+            fallback_reasons: ("empty_features" | "low_score" | "ambiguous_intent" | "low_similarity")[];
+        };
+        /** IntentSummary */
+        IntentSummary: {
+            /** Labels */
+            labels: (string | null)[];
+            /** Confusion Matrix */
+            confusion_matrix: number[][];
+            /** Test Count */
+            test_count: number;
+            /** Known Count */
+            known_count: number;
+            /** Unknown Count */
+            unknown_count: number;
+            /** Excluded Disabled Count */
+            excluded_disabled_count: number;
+            /** Accuracy */
+            accuracy: number | null;
+            /** Macro Precision */
+            macro_precision: number | null;
+            /** Macro Recall */
+            macro_recall: number | null;
+            /** Macro F1 */
+            macro_f1: number | null;
+            /** Micro Precision */
+            micro_precision: number | null;
+            /** Micro Recall */
+            micro_recall: number | null;
+            /** Micro F1 */
+            micro_f1: number | null;
+            /** Unknown Rejection */
+            unknown_rejection: number | null;
+            /** Known Fallback Rate */
+            known_fallback_rate: number | null;
+            /** Per Intent */
+            per_intent: components["schemas"]["ClassMetrics"][];
+            /** Error Count */
+            error_count: number;
+        };
         /** InvitationInput */
         InvitationInput: {
             /**
@@ -1497,6 +1742,29 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** ReportView */
+        ReportView: {
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /** Training Examples */
+            training_examples: number;
+            intents: components["schemas"]["IntentSummary"];
+            entities: components["schemas"]["EntitySummary"];
+            /** Intent Catalog */
+            intent_catalog: components["schemas"]["CatalogEntry"][];
+            /** Entity Catalog */
+            entity_catalog: components["schemas"]["CatalogEntry"][];
+            /**
+             * Graph Validation
+             * @constant
+             */
+            graph_validation: "not_checked";
+            /** Warnings */
+            warnings: string[];
+        };
         /** ResetInput */
         ResetInput: {
             /** Token */
@@ -1530,6 +1798,32 @@ export interface components {
         TokenInput: {
             /** Token */
             token: string;
+        };
+        /** TrainingJob */
+        TrainingJob: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /** Error Code */
+            error_code: string | null;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /** Source Revision */
+            source_revision: number;
+            /** Stage */
+            stage: ("validation" | "intent_training" | "entity_training" | "evaluation" | "packaging") | null;
         };
         /** TransferInput */
         TransferInput: {
@@ -1594,6 +1888,79 @@ export interface components {
             errors: components["schemas"]["ValidationIssue"][];
             /** Warnings */
             warnings: components["schemas"]["ValidationIssue"][];
+        };
+        /** VersionCreated */
+        VersionCreated: {
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Replayed */
+            replayed: boolean;
+        };
+        /** VersionInput */
+        VersionInput: {
+            /** Source Revision */
+            source_revision: number;
+        };
+        /** VersionView */
+        VersionView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Number */
+            number: number;
+            /** Source Revision */
+            source_revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "building" | "ready" | "failed" | "cancelled";
+            /**
+             * Job Status
+             * @enum {string}
+             */
+            job_status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /** Error Code */
+            error_code: string | null;
+            /** Stage */
+            stage: ("validation" | "intent_training" | "entity_training" | "evaluation" | "packaging") | null;
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Config Hash */
+            config_hash: string;
+            /** Nlu Hash */
+            nlu_hash: string;
+            /** Dataset Warnings */
+            dataset_warnings: components["schemas"]["ValidationIssue"][];
+            /** Warnings Truncated */
+            warnings_truncated: boolean;
+            /** Graph Validation */
+            graph_validation: "not_checked" | null;
         };
     };
     responses: never;
@@ -7159,7 +7526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExportJob"] | components["schemas"]["ImportJob"];
+                    "application/json": components["schemas"]["ExportJob"] | components["schemas"]["ImportJob"] | components["schemas"]["TrainingJob"];
                 };
             };
             /** @description Bad Request */
@@ -7290,7 +7657,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExportJob"] | components["schemas"]["ImportJob"];
+                    "application/json": components["schemas"]["ExportJob"] | components["schemas"]["ImportJob"] | components["schemas"]["TrainingJob"];
                 };
             };
             /** @description Bad Request */
@@ -7825,6 +8192,677 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Locked */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_versions_api_v1_organizations__org_id__agents__agent_id__versions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: number | null;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_VersionView_"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Locked */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_version_api_v1_organizations__org_id__agents__agent_id__versions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                org_id: string;
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Locked */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_version_api_v1_organizations__org_id__agents__agent_id__versions__version_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+                agent_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Locked */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_report_api_v1_organizations__org_id__agents__agent_id__versions__version_id__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+                agent_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Locked */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    report_errors_api_v1_organizations__org_id__agents__agent_id__versions__version_id__report_errors_get: {
+        parameters: {
+            query: {
+                kind: "intent" | "entity";
+                limit?: number;
+                cursor?: number;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+                agent_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_Union_IntentErrorView__EntityErrorView__"];
                 };
             };
             /** @description Bad Request */

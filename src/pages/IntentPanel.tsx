@@ -31,7 +31,7 @@ export function IntentPanel({ orgId, agentId, draft, editable, update }: { orgId
     return result.data
   }, staleTime: 0 })
   useEffect(() => { if (dataset.data?.revision === draft.revision) setVerified(true) }, [dataset.data, draft.revision])
-  if (!verified && dataset.isLoading) return <p role="status">Загрузка намерений…</p>
+  if (!verified && dataset.isFetching) return <p role="status">Загрузка намерений…</p>
   if (!verified && dataset.isError) return <div className="data-state"><h2>Не удалось открыть данные агента</h2><p>Повторите попытку или обратитесь к администратору пространства.</p><button className="button button-quiet" onClick={() => dataset.refetch()}>Повторить</button></div>
   if (!verified) return <div className="data-state"><h2>Черновик изменился</h2><p>Обновите страницу после сохранения локальных изменений.</p><button className="button button-quiet" onClick={() => dataset.refetch()}>Повторить</button></div>
   const intents = draft.config.intents as unknown as Intent[]

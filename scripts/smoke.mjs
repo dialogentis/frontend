@@ -21,6 +21,14 @@ await page.evaluateOnNewDocument(() => {
       window.__dropDraftResponse = false
       throw new TypeError('Simulated lost response')
     }
+    if (window.__dropTrainingResponse && method === 'POST' && url.endsWith('/versions')) {
+      window.__dropTrainingResponse = false
+      throw new TypeError('Simulated lost training response')
+    }
+    if (window.__delayImportResponse && method === 'POST' && url.includes('/imports/') && url.endsWith('/apply')) {
+      window.__delayImportResponse = false
+      await new Promise(resolve => setTimeout(resolve, 1200))
+    }
     return response
   }
 })
@@ -211,9 +219,47 @@ try {
   await click('Проверить файл')
   await page.waitForFunction(() => document.querySelector('.import-report')?.textContent.includes('Ошибок не найдено'), { timeout: 30000 })
   page.once('dialog', dialog => dialog.accept())
+  await page.evaluate(() => { window.__delayImportResponse = true })
   await click('Применить импорт')
   await page.waitForFunction(async () => { const p = location.pathname.split('/'); return (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config.examples.length === 2 })
+  assert.ok(await page.$eval('[role="tab"]', tab => tab.disabled))
+  await page.waitForFunction(() => !document.querySelector('.import-report') && [...document.querySelectorAll('[role="tab"]')].every(tab => !tab.disabled))
   await page.click('.import-panel > summary')
+  await click('Намерения')
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Добавить намерение'))
+  await click('Добавить намерение')
+  await page.$eval('[name="intent_name"]', input => input.select())
+  await page.type('[name="intent_name"]', 'Возврат заказа')
+  await page.$eval('[name="intent_code"]', input => input.select())
+  await page.type('[name="intent_code"]', 'return_order')
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
+  await click('Примеры')
+  await page.click('.import-panel > summary')
+  const trainingCsv = join(tmpdir(), `dialogentis-training-${randomUUID()}.csv`)
+  temporaryFiles.push(trainingCsv)
+  const trainingRows = ['text,intent,split,entities']
+  for (let i = 0; i < 5; i++) {
+    trainingRows.push(`Узнать статус заказа ${i},order_status,train,[]`)
+    trainingRows.push(`Вернуть покупку номер ${i},return_order,train,[]`)
+  }
+  trainingRows.push('Как вернуть заказ,return_order,test,[]', 'Какая сегодня погода,,test,[]')
+  await writeFile(trainingCsv, trainingRows.join('\n'))
+  await (await page.$('[aria-label="Файл импорта"]')).uploadFile(trainingCsv)
+  await click('Проверить файл')
+  await page.waitForFunction(() => document.querySelector('.import-report')?.textContent.includes('Ошибок не найдено'), { timeout: 30000 })
+  await click('Применить импорт')
+  await page.waitForFunction(async () => { const p = location.pathname.split('/'); return (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config.examples.length === 14 })
+  await page.waitForFunction(() => !document.querySelector('.import-report') && [...document.querySelectorAll('[role="tab"]')].every(tab => !tab.disabled))
+  await click('Обучение')
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Обучить агента' && !button.disabled))
+  await page.evaluate(() => { window.__dropTrainingResponse = true })
+  await click('Обучить агента')
+  await contains('Запуск не подтверждён')
+  await click('Проверить запуск')
+  await page.waitForFunction(() => document.querySelector('.training-report')?.textContent.includes('F1 намерений'), { timeout: 90000 })
+  await contains('Сценарий ещё не проверен')
+  assert.equal(await page.$$eval('.training-version-list button[aria-pressed]', buttons => buttons.length), 1)
+  if (process.env.TRAINING_SCREENSHOT_PATH) await page.screenshot({ path: process.env.TRAINING_SCREENSHOT_PATH })
   await click('Сценарий')
   if (process.env.SCREENSHOT_PATH) await page.screenshot({ path: process.env.SCREENSHOT_PATH })
   if (process.env.DARK_SCREENSHOT_PATH) {
