@@ -786,7 +786,10 @@ dialog::backdrop { background: var(--color-overlay); }
 .switch-node > strong { display: block; padding: var(--space-sm); font-size: var(--text-label); font-weight: 500; }
 .switch-node-output { position: relative; padding: var(--space-xs) var(--space-sm); border-top: 1px solid var(--color-rule); font-size: var(--text-label); overflow-wrap: anywhere; }
 .react-flow__node.selected .switch-node { outline: 2px solid var(--color-accent); outline-offset: 1px; }
-.switch-inspector select { width: 100%; }
+.switch-inspector select, .ask-inspector select, .ask-inspector input { width: 100%; }
+.ask-inspector h3 { margin-top: var(--space-lg); font-size: var(--text-data); }
+.ask-check { padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-rule); }
+.ask-check .field-label { margin-top: var(--space-sm); }
 .draft-canvas .react-flow__edge-text { fill: var(--color-ink); }
 .draft-canvas .react-flow__edge-textbg { fill: var(--color-paper); }
 .draft-canvas .react-flow__controls-button { background: var(--color-paper-2); color: var(--color-ink); border-color: var(--color-rule); fill: currentColor; }
