@@ -16,8 +16,9 @@ const messages: Record<string, string> = {
   empty_file: 'Файл не содержит примеров.', file_too_large: 'Файл превышает 10 МиБ.', row_limit: 'Слишком много строк.', configuration_too_large: 'Получившийся черновик превышает 10 МиБ.',
   too_many_errors: 'Показаны не все ошибки. Исправьте их и проверьте файл снова.',
   invalid_current_configuration: 'Проверьте текущие данные и настройки сценария.', flow_not_imported: 'Сценарий из файла отличается; при объединении сохранится текущий сценарий.', settings_not_imported: 'Настройки порогов из файла отличаются; при объединении сохранятся текущие настройки.',
+  invalid_slots: 'Некорректный список параметров.', invalid_slot: 'Проверьте тип и значение параметра.', duplicate_slot_id: 'Идентификатор параметра повторяется.', duplicate_slot_code: 'Код параметра повторяется.', slot_in_use: 'Сначала удалите ссылки на изменяемый параметр в сценарии.',
 }
-const fields: Record<string, string> = { intents: 'намерения', entities: 'сущности', examples: 'примеры', text: 'текст', intent_id: 'намерение', spans: 'разметка', code: 'код', flow: 'сценарий', file: 'файл', row: 'строка' }
+const fields: Record<string, string> = { intents: 'намерения', entities: 'сущности', slots: 'параметры', examples: 'примеры', text: 'текст', intent_id: 'намерение', spans: 'разметка', code: 'код', flow: 'сценарий', file: 'файл', row: 'строка' }
 
 export function ImportPanel({ orgId, agentId, revision, lease, enabled, onApplying, onImported, onUncertain }: {
   orgId: string; agentId: string; revision: number; lease: Grant | null; enabled: boolean;
