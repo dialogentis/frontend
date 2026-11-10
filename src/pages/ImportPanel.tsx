@@ -10,7 +10,7 @@ type Grant = components['schemas']['LeaseGrant']
 const terminal = new Set<ImportView['status']>(['succeeded', 'failed', 'cancelled'])
 const messages: Record<string, string> = {
   duplicate_across_splits: 'Фраза уже есть в другом наборе.', duplicate_within_split: 'Фраза уже есть в наборе.',
-  duplicate_code: 'Код уже используется.', duplicate_id: 'Идентификатор уже используется.', unknown_intent: 'Намерение не найдено.', unknown_entity: 'Сущность не найдена.',
+  duplicate_code: 'Код уже используется.', duplicate_id: 'Идентификатор уже используется.', unknown_intent: 'Намерение не найдено.', unknown_intent_output: 'В сценарии есть ветвь, ссылающаяся на отсутствующее намерение.', unknown_entity: 'Сущность не найдена.',
   invalid_json: 'Некорректный JSON.', invalid_csv: 'Некорректный CSV.', invalid_header: 'Нужны столбцы text, intent, split и entities.', invalid_utf8: 'Файл должен быть в UTF-8.',
   invalid_columns: 'Неверное число столбцов.', invalid_entities: 'Некорректный список сущностей.', invalid_range: 'Разметка выходит за границы текста.', overlap: 'Разметки пересекаются.', token_boundary: 'Разметка должна совпадать с границами слов.',
   empty_file: 'Файл не содержит примеров.', file_too_large: 'Файл превышает 10 МиБ.', row_limit: 'Слишком много строк.', configuration_too_large: 'Получившийся черновик превышает 10 МиБ.',
