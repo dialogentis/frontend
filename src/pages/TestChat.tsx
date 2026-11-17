@@ -26,7 +26,7 @@ export function TestChat({ orgId, agentId, versionId }: { orgId: string; agentId
       if (!result.data) throw new Error('Некорректный ответ сервера')
       setChat(result.data); setTrace(result.data.trace)
       setMessages(result.data.messages.map(text => ({ id: crypto.randomUUID(), role: 'agent', text })))
-    } catch (e) { setError(e instanceof ApiError ? e.message : 'Не удалось начать диалог. Попробуйте ещё раз.') }
+    } catch (e) { setError(e instanceof ApiError ? [e.message, ...e.details.map(item => typeof item.message === 'string' ? item.message : '').filter(Boolean).slice(0, 3)].join(' ') : 'Не удалось начать диалог. Попробуйте ещё раз.') }
     finally { setBusy(false) }
   }
 
