@@ -25,6 +25,10 @@ await page.evaluateOnNewDocument(() => {
       window.__dropTrainingResponse = false
       throw new TypeError('Simulated lost training response')
     }
+    if (window.__dropChatResponse && method === 'POST' && url.endsWith('/messages')) {
+      window.__dropChatResponse = false
+      throw new TypeError('Simulated lost chat response')
+    }
     if (window.__delayImportResponse && method === 'POST' && url.includes('/imports/') && url.endsWith('/apply')) {
       window.__delayImportResponse = false
       await new Promise(resolve => setTimeout(resolve, 1200))
@@ -301,6 +305,20 @@ try {
   assert.match(await page.$eval('.training-report', report => report.textContent), /F1 намерений ниже 78\s*%/)
   await contains('Сценарий ещё не проверен')
   assert.equal(await page.$$eval('.training-version-list button[aria-pressed]', buttons => buttons.length), 1)
+  await click('Начать диалог')
+  await page.waitForSelector('#test-chat-text:not([disabled])')
+  const initialChatMessages = await page.$$('.test-chat-message-agent')
+  await page.type('#test-chat-text', 'Где мой заказ?')
+  await page.evaluate(() => { window.__dropChatResponse = true })
+  await click('Отправить')
+  await contains('Ответ не получен')
+  await click('Повторить')
+  await page.waitForFunction(count => document.querySelectorAll('.test-chat-message-agent').length > count, {}, initialChatMessages.length)
+  assert.equal(await page.$$eval('.test-chat-message-user', messages => messages.length), 1)
+  if (process.env.CHAT_ONLY) {
+    assert.deepEqual(errors, [])
+    console.log('PASS: test chat and retry after lost response')
+  } else {
   if (process.env.TRAINING_SCREENSHOT_PATH) await page.screenshot({ path: process.env.TRAINING_SCREENSHOT_PATH })
   await click('Сценарий')
   await click('Проверить сценарий')
@@ -641,6 +659,7 @@ try {
   }
   assert.deepEqual(errors, [])
   console.log(process.env.CONDITION_ONLY ? 'PASS: condition editor, validation and copying' : 'PASS: auth, agents, organization isolation, invitations, roles, ownership transfer, leaving and deletion')
+  }
 } catch (error) {
   try { console.error('Page:', await page.evaluate(() => `${location.pathname}\n${document.body.innerText}`)) } catch { console.error('Page unavailable') }
   throw error

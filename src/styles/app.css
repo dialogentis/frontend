@@ -819,6 +819,19 @@ dialog::backdrop { background: var(--color-overlay); }
 .training-version-list button span, .training-version-list button small { color: var(--color-muted); font-size: var(--text-label); }
 .training-detail { min-width: 0; padding: var(--space-lg); }
 .training-detail .section-heading { margin-bottom: var(--space-md); }
+.test-chat { margin-block: var(--space-lg); padding: var(--space-md); border: 1px solid var(--color-rule); }
+.test-chat h4 { margin: 0; }
+.test-chat-messages { display: flex; flex-direction: column; gap: var(--space-sm); max-height: 320px; overflow-y: auto; padding: var(--space-md); background: var(--color-paper); }
+.test-chat-message { max-width: 85%; padding: var(--space-sm); background: var(--color-plate); overflow-wrap: anywhere; }
+.test-chat-message-user { align-self: flex-end; background: var(--color-accent-soft); }
+.test-chat-message small { color: var(--color-muted); }
+.test-chat-message p { margin: var(--space-2xs) 0 0; white-space: pre-wrap; }
+.test-chat-form { display: grid; gap: var(--space-xs); margin-top: var(--space-md); }
+.test-chat-form label { color: var(--color-muted); font-size: var(--text-label); }
+.test-chat-form > div { display: flex; gap: var(--space-xs); }
+.test-chat-form input { min-width: 0; flex: 1; }
+.test-chat-trace { margin-top: var(--space-md); font-size: var(--text-label); }
+.test-chat-trace summary { cursor: pointer; }
 .training-report h4, .training-errors h4 { margin: var(--space-lg) 0 var(--space-sm); }
 .training-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-sm); margin-block: var(--space-lg); }
 .training-metrics > div { padding: var(--space-md); background: var(--color-paper); display: flex; flex-direction: column; gap: var(--space-xs); }
