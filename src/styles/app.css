@@ -805,6 +805,11 @@ dialog::backdrop { background: var(--color-overlay); }
 .intent-list button[aria-pressed="true"] { background: var(--color-paper-2); }
 .intent-list button span { color: var(--color-muted); font-size: var(--text-label); }
 .training-page { padding-top: var(--space-xl); }
+.organization-settings-form { display: grid; gap: var(--space-lg); max-width: 640px; }
+.organization-settings-form .field-label { margin: 0; }
+.organization-settings-form .field-help { margin: 0; }
+.organization-settings-form > .button { justify-self: start; }
+.settings-checkbox { display: flex; align-items: center; gap: var(--space-xs); }
 .training-settings { margin-top: var(--space-lg); padding: var(--space-md); border: 1px solid var(--color-rule); }
 .training-settings summary { cursor: pointer; font-weight: 500; }
 .training-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: var(--space-lg); margin-block: var(--space-md); }

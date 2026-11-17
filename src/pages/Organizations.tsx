@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Boxes, LogOut, Moon, Plus, Sun, Users } from 'lucide-react'
+import { Boxes, LogOut, Moon, Plus, Settings2, Sun, Users } from 'lucide-react'
 import { api, check } from '../api'
 import { useSession } from '../Session'
 import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
@@ -12,6 +12,7 @@ import { AuthFrame } from './Auth'
 import { MembersPage } from './Members'
 import { WorkspaceAgents } from './WorkspaceAgents'
 const WorkspaceDraft = lazy(() => import('./WorkspaceDraft').then(module => ({ default: module.WorkspaceDraft })))
+const OrganizationSettings = lazy(() => import('./OrganizationSettings').then(module => ({ default: module.OrganizationSettings })))
 
 const schema = z.object({ name: z.string().trim().min(1, 'Укажите название').max(120), slug: z.string().regex(/^[a-z][a-z0-9-]{1,63}$/, 'От 2 до 64 латинских букв, цифр и дефисов') })
 type OrganizationInput = z.infer<typeof schema>
@@ -55,17 +56,19 @@ export function WorkspacePage() {
   const options = orgs.data!.map(o => ({ id: o.id, name: o.name, initials: o.name.slice(0, 2).toLocaleUpperCase('ru') }))
   const role = { owner: 'Владелец', admin: 'Администратор', editor: 'Редактор', viewer: 'Наблюдатель' }[current.role]
   const membersPage = location.pathname.endsWith('/members')
+  const settingsPage = location.pathname.endsWith('/settings')
   const root = `/app/o/${current.id}`
   return <div className="app-shell"><aside className="sidebar workspace-real-sidebar">
     <Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link>
     <WorkspaceSwitcher value={current.id} organizations={options} onChange={id => { cache.removeQueries({ predicate: q => q.queryKey[0] !== 'session' && q.queryKey[0] !== 'organizations' }); navigate(`/app/o/${id}`) }}/>
-    <nav className="primary-nav" aria-label="Основная навигация"><Link className={`nav-link ${!membersPage ? 'nav-link-active' : ''}`} to={root}><Boxes size={18}/>Агенты</Link><Link className={`nav-link ${membersPage ? 'nav-link-active' : ''}`} to={`${root}/members`}><Users size={18}/>Участники</Link><Link className="nav-link" to="/app/organizations">Все пространства</Link></nav>
+    <nav className="primary-nav" aria-label="Основная навигация"><Link className={`nav-link ${!membersPage && !settingsPage ? 'nav-link-active' : ''}`} to={root}><Boxes size={18}/>Агенты</Link><Link className={`nav-link ${membersPage ? 'nav-link-active' : ''}`} to={`${root}/members`}><Users size={18}/>Участники</Link><Link className={`nav-link ${settingsPage ? 'nav-link-active' : ''}`} to={`${root}/settings`}><Settings2 size={18}/>Настройки</Link><Link className="nav-link" to="/app/organizations">Все пространства</Link></nav>
     <div className="sidebar-bottom"><div className="user-profile"><span className="user-avatar">Вы</span><span><strong>{session.user.email}</strong><small>{role}</small></span></div></div>
   </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><span>{current.name}</span></div><div className="topbar-actions">
     <Link className="button button-text workspace-mobile-members" to={membersPage ? root : `${root}/members`}>{membersPage ? 'Агенты' : 'Участники'}</Link>
+    <Link className="button icon-button workspace-mobile-members" aria-label="Настройки пространства" to={`${root}/settings`}><Settings2 size={18}/></Link>
     <button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
     <button className="button button-text" onClick={() => { if (!editorDirty || window.confirm('Есть несохранённые изменения. Выйти из аккаунта?')) void logout().then(() => navigate('/login')).catch(e => setError(e.message)) }}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page">
-    {error && <p role="alert" className="auth-error">{error}</p>}{membersPage ? <MembersPage key={current.id} orgId={current.id} name={current.name} role={current.role} userId={session.user.id}/> : agentId ? <Suspense fallback={<p role="status">Загрузка редактора…</p>}><WorkspaceDraft key={agentId} orgId={current.id} agentId={agentId} userId={session.user.id} role={current.role} onDirtyChange={setEditorDirty}/></Suspense> : <WorkspaceAgents key={current.id} orgId={current.id} role={current.role}/>}
+    {error && <p role="alert" className="auth-error">{error}</p>}{settingsPage ? <Suspense fallback={<p role="status">Загрузка настроек…</p>}><OrganizationSettings key={current.id} orgId={current.id}/></Suspense> : membersPage ? <MembersPage key={current.id} orgId={current.id} name={current.name} role={current.role} userId={session.user.id}/> : agentId ? <Suspense fallback={<p role="status">Загрузка редактора…</p>}><WorkspaceDraft key={agentId} orgId={current.id} agentId={agentId} userId={session.user.id} role={current.role} onDirtyChange={setEditorDirty}/></Suspense> : <WorkspaceAgents key={current.id} orgId={current.id} role={current.role}/>}
   </main></div></div>
 }
 

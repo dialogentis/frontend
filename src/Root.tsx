@@ -17,6 +17,7 @@ export function Root() {
     <Route path="/app/o/:orgId" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="/app/o/:orgId/agents/:agentId" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="/app/o/:orgId/members" element={<RequireSession><WorkspacePage/></RequireSession>}/>
+    <Route path="/app/o/:orgId/settings" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="*" element={<Navigate to="/app/organizations" replace/>}/>
   </Routes>
 }
