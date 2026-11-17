@@ -779,7 +779,7 @@ dialog::backdrop { background: var(--color-overlay); }
 .flow-validation-result ul { margin: 0; padding-left: var(--space-lg); }
 .flow-validation-result li { padding-block: var(--space-2xs); font-size: var(--text-data); }
 .flow-validation-result li button { margin-left: var(--space-sm); text-decoration: underline; text-underline-offset: .2em; }
-.draft-editor { display: grid; grid-template-columns: minmax(0, 1fr) 260px; min-height: 520px; border: 1px solid var(--color-rule); }
+.draft-editor { display: grid; grid-template-columns: minmax(0, 1fr) 260px; height: clamp(520px, calc(100vh - 220px), 850px); border: 1px solid var(--color-rule); }
 .draft-canvas { min-height: 520px; background: var(--color-paper); }
 .draft-canvas .react-flow__node { background: var(--color-paper-2); color: var(--color-ink); border-color: var(--color-rule); }
 .switch-node { position: relative; width: 220px; border: 1px solid var(--color-rule); border-radius: 3px; background: var(--color-paper-2); color: var(--color-ink); text-align: left; }
@@ -793,10 +793,11 @@ dialog::backdrop { background: var(--color-overlay); }
 .draft-canvas .react-flow__edge-text { fill: var(--color-ink); }
 .draft-canvas .react-flow__edge-textbg { fill: var(--color-paper); }
 .draft-canvas .react-flow__controls-button { background: var(--color-paper-2); color: var(--color-ink); border-color: var(--color-rule); fill: currentColor; }
-.draft-inspector { padding: var(--space-lg); border-left: 1px solid var(--color-rule); overflow-wrap: anywhere; }
+.draft-inspector { padding: var(--space-lg); border-left: 1px solid var(--color-rule); overflow: auto; overflow-wrap: anywhere; }
 .draft-inspector h2 { margin-bottom: var(--space-md); font-size: 18px; }
 .draft-inspector .field-label { margin-top: var(--space-lg); }
 .draft-inspector textarea { width: 100%; }
+.http-mapping-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); padding-block: var(--space-xs); border-bottom: 1px solid var(--color-rule); font-size: var(--text-label); }
 .draft-sections { margin-top: var(--space-xl); border-bottom: 1px solid var(--color-rule); }
 .intent-panel { padding-top: var(--space-xl); }
 .intent-layout { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(280px, 1.2fr); margin-top: var(--space-lg); border: 1px solid var(--color-rule); }

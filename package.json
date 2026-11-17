@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "node --test scripts/test-*.mjs",
     "test:smoke": "node scripts/smoke.mjs",
+    "test:smoke:http": "node scripts/smoke-http.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "api:generate": "openapi-typescript ../backend/openapi.json -o src/api/schema.d.ts"
   },
