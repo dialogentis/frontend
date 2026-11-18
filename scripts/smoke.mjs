@@ -4,6 +4,7 @@ import { writeFile, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import puppeteer from 'puppeteer-core'
+import { verifyWidget } from './widget-smoke.mjs'
 
 const base = process.env.BASE_URL || 'http://localhost:18180'
 const mailbox = process.env.MAILPIT_URL || 'http://localhost:18125'
@@ -432,6 +433,7 @@ try {
     const repeated = await (await fetch(endpoint, request)).json()
     assert.equal(repeated.replayed, true)
     assert.deepEqual(repeated.messages, answer.messages)
+    await verifyWidget(browser, page, click)
     assert.deepEqual(errors, [])
     console.log('PASS: release publishes from the workspace and runs through the external API')
   } else if (process.env.HANDOFF_ONLY) {

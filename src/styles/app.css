@@ -928,4 +928,6 @@ dialog::backdrop { background: var(--color-overlay); }
 .widget-preview-card { width: min(100%, 260px); border: 1px solid var(--color-rule); border-top: 3px solid var(--widget-accent); background: var(--color-plate); padding: var(--space-md); overflow-wrap: anywhere; }
 .widget-preview-card p { margin: var(--space-xs) 0 0; white-space: pre-wrap; }
 .widget-preview-launcher { display: grid; place-items: center; width: 40px; height: 40px; border: 2px solid var(--widget-accent); border-radius: 50%; background: var(--color-plate); }
+.widget-embed { flex: 1 1 100%; min-width: 0; }
+.widget-embed .code-block { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 740px) { .widget-settings-layout { grid-template-columns: 1fr; } }

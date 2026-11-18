@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MessageCircle } from 'lucide-react'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
@@ -16,6 +16,7 @@ export function WidgetChannels({ orgId, agentId, archived, published }: {
   const queryKey = ['widget-channels', orgId, agentId]
   const cache = useQueryClient()
   const [editor, setEditor] = useState<Editor>(null)
+  const [embed, setEmbed] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -95,6 +96,8 @@ export function WidgetChannels({ orgId, agentId, archived, published }: {
       <div className="row-actions">
         <button type="button" className="button button-quiet" disabled={busy || !!editor}
           onClick={() => selectEditor(widget)}>Настроить виджет</button>
+        <button type="button" className="button button-quiet" aria-expanded={embed === widget.id}
+          onClick={() => setEmbed(current => current === widget.id ? null : widget.id)}>Код вставки</button>
         <button type="button" className="button button-quiet" disabled={busy || !!editor || (archived && !widget.enabled)}
           onClick={() => void run(async () => {
             const result = widget.enabled
@@ -105,10 +108,39 @@ export function WidgetChannels({ orgId, agentId, archived, published }: {
             check(result.response, result.error)
           }, widget.enabled ? 'Виджет отключён.' : 'Виджет включён.')}>{widget.enabled ? 'Отключить виджет' : 'Включить виджет'}</button>
       </div>
+      {embed === widget.id && <EmbedCode orgId={orgId} agentId={agentId} channelId={widget.id}/>}
     </li>)}</ul>}
     {channels.hasNextPage && <button type="button" className="button button-quiet" disabled={channels.isFetchingNextPage}
       onClick={() => void channels.fetchNextPage()}>Показать ещё виджеты</button>}
   </section>
+}
+
+function EmbedCode({ orgId, agentId, channelId }: { orgId: string; agentId: string; channelId: string }) {
+  const [copyStatus, setCopyStatus] = useState('')
+  const code = useQuery({
+    queryKey: ['widget-embed', orgId, agentId, channelId],
+    queryFn: async ({ signal }) => {
+      const result = await api.GET('/api/v1/organizations/{org_id}/agents/{agent_id}/widget-channels/{channel_id}/embed-code', {
+        params: { path: { org_id: orgId, agent_id: agentId, channel_id: channelId } }, signal,
+      })
+      check(result.response, result.error)
+      if (!result.data) throw new Error('Некорректный ответ сервера')
+      return result.data.html
+    },
+  })
+  return <div className="widget-embed">
+    {code.isPending && <p role="status">Загрузка кода…</p>}
+    {code.isError && <p role="alert">Не удалось получить код. <button type="button" className="button button-quiet"
+      onClick={() => void code.refetch()}>Повторить</button></p>}
+    {code.data !== undefined && <><p className="field-help">Добавьте этот скрипт на страницу разрешённого сайта.</p>
+      <pre className="code-block">{code.data}</pre>
+      <button type="button" className="button button-quiet" onClick={async () => {
+        try { await navigator.clipboard.writeText(code.data); setCopyStatus('Код скопирован.') }
+        catch { setCopyStatus('Выделите и скопируйте код вручную.') }
+      }}>Скопировать код</button>
+      {copyStatus && <p role="status" className="field-help">{copyStatus}</p>}
+    </>}
+  </div>
 }
 
 function WidgetForm({ widget, busy, save, cancel }: {
