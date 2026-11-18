@@ -4,6 +4,7 @@ import { FlaskConical } from 'lucide-react'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
 import { TestChat } from './TestChat'
+import { ReleasePanel } from './ReleasePanel'
 
 type Version = components['schemas']['VersionView']
 type Report = components['schemas']['ReportView']
@@ -26,7 +27,7 @@ const settingDescriptions: { key: keyof Settings; name: string; description: str
   { key: 'similarity', name: 'Сходство с примерами', description: 'Минимальное сходство запроса с обучающими фразами.' },
 ]
 
-export function TrainingPanel({ orgId, agentId, userId, role, revision, enabled, archived, settings, quality, editable, onSettingsChange, onQualityChange }: { orgId: string; agentId: string; userId: string; role: Role; revision: number; enabled: boolean; archived: boolean; settings: Settings; quality: QualitySettings; editable: boolean; onSettingsChange: (settings: Settings) => void; onQualityChange: (settings: QualitySettings) => void }) {
+export function TrainingPanel({ orgId, agentId, agent, userId, role, revision, enabled, archived, settings, quality, editable, onSettingsChange, onQualityChange }: { agent?: components['schemas']['AgentView']; orgId: string; agentId: string; userId: string; role: Role; revision: number; enabled: boolean; archived: boolean; settings: Settings; quality: QualitySettings; editable: boolean; onSettingsChange: (settings: Settings) => void; onQualityChange: (settings: QualitySettings) => void }) {
   const cache = useQueryClient()
   const path = { org_id: orgId, agent_id: agentId }
   const pendingKey = `dialogentis:training:${userId}:${orgId}:${agentId}`
@@ -88,6 +89,7 @@ export function TrainingPanel({ orgId, agentId, userId, role, revision, enabled,
         {selected.status === 'ready' && (report.isPending ? <p role="status">Загрузка отчёта…</p> : report.isError ? <div role="alert">Не удалось загрузить отчёт. <button type="button" className="button button-text" onClick={() => void report.refetch()}>Повторить</button></div> : report.data && <TrainingReport report={report.data} orgId={orgId} agentId={agentId}/>)}
       </div>}
     </div>}
+    {agent && <ReleasePanel agent={agent} version={selected} versions={items} report={report.data} canPublish={role === 'owner' || role === 'admin'} saved={enabled}/>}
   </section>
 }
 

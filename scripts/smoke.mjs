@@ -286,13 +286,33 @@ try {
     trainingRows.push(`Вернуть покупку номер ${i},return_order,train,[]`)
   }
   trainingRows.push('Как вернуть заказ,return_order,test,[]', 'Какая сегодня погода,,test,[]')
+  if (process.env.RELEASE_ONLY) {
+    for (let i = 1; i <= 3; i++) {
+      trainingRows.push(`${'🛸'.repeat(i)},order_status,test,[]`, `${'🦄'.repeat(i)},return_order,test,[]`)
+    }
+  }
   await writeFile(trainingCsv, trainingRows.join('\n'))
   await (await page.$('[aria-label="Файл импорта"]')).uploadFile(trainingCsv)
   await click('Проверить файл')
   await page.waitForFunction(() => document.querySelector('.import-report')?.textContent.includes('Ошибок не найдено'), { timeout: 30000 })
   await click('Применить импорт')
-  await page.waitForFunction(async () => { const p = location.pathname.split('/'); return (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config.examples.length === 14 })
+  await page.waitForFunction(async expected => {
+    const p = location.pathname.split('/')
+    const draft = await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()
+    return draft.config.examples.length === expected
+  }, {}, process.env.RELEASE_ONLY ? 20 : 14)
   await page.waitForFunction(() => !document.querySelector('.import-report') && [...document.querySelectorAll('[role="tab"]')].every(tab => !tab.disabled))
+  if (process.env.RELEASE_ONLY) {
+    await click('Сценарий')
+    await page.click('.react-flow__node-intentSwitch')
+    const orderBranch = '[aria-label="Ветвь: Статус заказа"]'
+    const returnBranch = '[aria-label="Ветвь: Возврат заказа"]'
+    await page.waitForSelector(orderBranch)
+    const endId = await page.$eval(orderBranch, select => [...select.options].find(option => option.textContent.startsWith('Завершение ·')).value)
+    await page.select(orderBranch, endId)
+    await page.select(returnBranch, endId)
+    await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
+  }
   await click('Обучение')
   await page.click('.training-settings > summary')
   await page.focus('.training-setting input')
@@ -325,14 +345,24 @@ try {
   await page.waitForSelector('#test-chat-text:not([disabled])')
   assert.ok(await page.evaluate(() => window.__chatStartReplayed))
   const initialChatMessages = await page.$$('.test-chat-message-agent')
-  await page.type('#test-chat-text', 'Где мой заказ?')
+  await page.type('#test-chat-text', process.env.RELEASE_ONLY ? 'Абракадабра' : 'Где мой заказ?')
   await page.evaluate(() => { window.__dropChatResponse = true })
   await click('Отправить')
   await contains('Ответ не получен')
   await click('Повторить')
   await page.waitForFunction(count => document.querySelectorAll('.test-chat-message-agent').length > count, {}, initialChatMessages.length)
   assert.equal(await page.$$eval('.test-chat-message-user', messages => messages.length), 1)
-  if (process.env.HANDOFF_ONLY) {
+  if (process.env.RELEASE_ONLY) {
+    await click('Проверить публикацию')
+    await contains('Подтверждаю предупреждения о качестве')
+    await page.click('.release-form input[type="checkbox"]')
+    await page.type('.release-form textarea', 'Сценарий проверен в тестовом чате')
+    await click('Опубликовать версию 1')
+    await contains('Версия 1 опубликована.')
+    await page.waitForFunction(() => document.querySelector('.release-row')?.textContent.includes('текущая публикация'))
+    assert.deepEqual(errors, [])
+    console.log('PASS: ready version publishes with a quality warning acknowledgement')
+  } else if (process.env.HANDOFF_ONLY) {
     const [, , , orgId, , trainedAgent] = new URL(page.url()).pathname.split('/')
     const agentPath = `/api/v1/organizations/${orgId}/agents`
     const newAgent = await page.evaluate(async path => {
