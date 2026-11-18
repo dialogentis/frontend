@@ -314,6 +314,10 @@ try {
   assert.match(await page.$eval('.training-report', report => report.textContent), /F1 намерений ниже 78\s*%/)
   await contains('Сценарий ещё не проверен')
   assert.equal(await page.$$eval('.training-version-list button[aria-pressed]', buttons => buttons.length), 1)
+  assert.deepEqual(await page.$eval('.test-chat select', input => ({
+    mode: input.value,
+    modes: [...input.options].map(option => option.value),
+  })), { mode: 'mock', modes: ['mock', 'live'] })
   await page.evaluate(() => { window.__dropChatStartResponse = true })
   await click('Начать диалог')
   await page.waitForFunction(() => document.querySelector('.test-chat [role="alert"]')?.textContent.includes('Не удалось начать диалог'))

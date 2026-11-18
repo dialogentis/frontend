@@ -84,7 +84,7 @@ export function TrainingPanel({ orgId, agentId, userId, role, revision, enabled,
         {selected.status === 'failed' && <p role="alert" className="auth-error">{failures[selected.error_code || ''] || 'Не удалось подготовить версию. Проверьте данные и повторите попытку.'}</p>}
         {selected.status === 'cancelled' && <p>Обучение отменено.</p>}
         {!!selected.dataset_warnings.length && <details><summary>Предупреждения данных: {selected.dataset_warnings.length}{selected.warnings_truncated ? '+' : ''}</summary>{selected.dataset_warnings.map((item, index) => <p className="field-help" key={`${item.code}-${index}`}>{item.message}</p>)}</details>}
-        {selected.status === 'ready' && <TestChat key={`${orgId}:${agentId}:${selected.id}`} orgId={orgId} agentId={agentId} versionId={selected.id}/>}
+        {selected.status === 'ready' && <TestChat key={`${orgId}:${agentId}:${selected.id}`} orgId={orgId} agentId={agentId} versionId={selected.id} canRunLive={role === 'owner' || role === 'admin'}/>}
         {selected.status === 'ready' && (report.isPending ? <p role="status">Загрузка отчёта…</p> : report.isError ? <div role="alert">Не удалось загрузить отчёт. <button type="button" className="button button-text" onClick={() => void report.refetch()}>Повторить</button></div> : report.data && <TrainingReport report={report.data} orgId={orgId} agentId={agentId}/>)}
       </div>}
     </div>}

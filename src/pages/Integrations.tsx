@@ -65,10 +65,11 @@ function IntegrationForm({ orgId, initial, busy, onCancel, onSave }: { orgId: st
   const [selected, setSelected] = useState<Method[]>(methods.filter(method => initial?.methods.includes(method) || (!initial && method === 'GET')))
   const [paths, setPaths] = useState(initial?.paths.join('\n') || '')
   const [fields, setFields] = useState(initial?.response_fields.join('\n') || '')
+  const [idempotency, setIdempotency] = useState(initial?.supports_idempotency ?? false)
   const [secret, setSecret] = useState('')
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    const data = { name: name.trim(), base_url: base.trim(), methods: selected, paths: lines(paths), response_fields: lines(fields), enabled: initial?.enabled ?? true }
+    const data = { name: name.trim(), base_url: base.trim(), methods: selected, paths: lines(paths), response_fields: lines(fields), enabled: initial?.enabled ?? true, supports_idempotency: idempotency }
     onSave(async () => {
       if (initial) {
         const result = await api.PATCH('/api/v1/organizations/{org_id}/integrations/{integration_id}', { params: { path: { org_id: orgId, integration_id: initial.id }, header: { 'If-Match': `"rev-${initial.revision}"` } }, body: data }); check(result.response, result.error)
@@ -84,6 +85,7 @@ function IntegrationForm({ orgId, initial, busy, onCancel, onSave }: { orgId: st
     <fieldset><legend>Разрешённые методы</legend><div className="integration-methods">{methods.map(method => <label key={method}><input type="checkbox" checked={selected.includes(method)} onChange={event => setSelected(current => event.target.checked ? [...current, method] : current.filter(item => item !== method))}/>{method}</label>)}</div></fieldset>
     <label className="field-label">Разрешённые пути<textarea value={paths} onChange={event => setPaths(event.target.value)} placeholder={'/orders/\n/status'} required/><span className="field-help">Каждый путь с новой строки, начиная с /.</span></label>
     <label className="field-label">Разрешённые поля ответа<textarea value={fields} onChange={event => setFields(event.target.value)} placeholder={'status\norder_id'}/><span className="field-help">Каждое поле с новой строки.</span></label>
+    <label><input type="checkbox" checked={idempotency} onChange={event => setIdempotency(event.target.checked)}/> Сервис поддерживает Idempotency-Key</label>
     {!initial && <label className="field-label">Секрет<input type="password" autoComplete="new-password" value={secret} onChange={event => setSecret(event.target.value)}/><span className="field-help">После сохранения значение нельзя посмотреть.</span></label>}
     <div className="row-actions"><button className="button button-primary" disabled={busy || !name.trim() || !selected.length || !lines(paths).length}>Сохранить</button><button type="button" className="button button-quiet" disabled={busy} onClick={onCancel}>Отмена</button></div>
   </form>

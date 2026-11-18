@@ -1688,6 +1688,11 @@ export interface components {
              * @default true
              */
             enabled: boolean;
+            /**
+             * Supports Idempotency
+             * @default false
+             */
+            supports_idempotency: boolean;
         };
         /** IntegrationPatch */
         IntegrationPatch: {
@@ -1703,6 +1708,8 @@ export interface components {
             response_fields?: string[] | null;
             /** Enabled */
             enabled?: boolean | null;
+            /** Supports Idempotency */
+            supports_idempotency?: boolean | null;
         };
         /** IntegrationView */
         IntegrationView: {
@@ -1723,6 +1730,8 @@ export interface components {
             response_fields: string[];
             /** Enabled */
             enabled: boolean;
+            /** Supports Idempotency */
+            supports_idempotency: boolean;
             /** Has Secret */
             has_secret: boolean;
             /** Revision */
@@ -2126,9 +2135,9 @@ export interface components {
             /**
              * Http Mode
              * @default mock
-             * @constant
+             * @enum {string}
              */
-            http_mode: "mock";
+            http_mode: "mock" | "live";
         };
         /** StartedChat */
         StartedChat: {
