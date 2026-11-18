@@ -5,6 +5,7 @@ import { ChevronRight, Search, X } from 'lucide-react'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
 import { HistoryExportPanel } from './HistoryExportPanel'
+import { HistoryDeletionPanel } from './HistoryDeletionPanel'
 
 type Dialogue = components['schemas']['ConversationView']
 const channels: Record<Dialogue['channel_type'], string> = { test: 'Тестовый чат', api: 'Внешний API', widget: 'Виджет' }
@@ -47,7 +48,7 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
     },
   })
   const canSearch = settings.data?.store_message_text === true
-  const canExport = settings.data?.role === 'owner' || settings.data?.role === 'admin'
+  const canManageHistory = settings.data?.role === 'owner' || settings.data?.role === 'admin'
   const filters = {
     agent_id: agent || undefined, channel_type: channel || undefined, status: status || undefined,
     from: fromDate(start), to: fromDate(end, true),
@@ -86,10 +87,16 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
   })
   const items = dialogues.data?.pages.flatMap(page => page.items) ?? []
   const name = (id: string) => agents.data?.find(item => item.id === id)?.name ?? id.slice(0, 8)
+  const deletionScope = [agent && name(agent), channel && channels[channel], status && statuses[status],
+    start && `с ${new Date(`${start}T00:00:00`).toLocaleDateString('ru')}`,
+    end && `по ${new Date(`${end}T00:00:00`).toLocaleDateString('ru')}`].filter(Boolean).join(' · ')
   return <section className="workspace-history">
     <div className="page-heading"><div><h1>Диалоги</h1><p>История тестовых и опубликованных агентов</p></div>
-      {canExport && settings.data && <HistoryExportPanel orgId={orgId} filters={filters} valid={validPeriod}
-        revision={settings.data.settings_revision}/>}
+      {canManageHistory && settings.data && <div className="history-actions">
+        <HistoryExportPanel orgId={orgId} filters={filters} valid={validPeriod} revision={settings.data.settings_revision}/>
+        <HistoryDeletionPanel orgId={orgId} filters={filters} scope={deletionScope || 'Вся история пространства'}
+          blocked={text ? 'Для удаления истории сбросьте поиск по тексту.' : !validPeriod ? 'Исправьте даты для удаления.' : ''}/>
+      </div>}
     </div>
     <div className="history-filters">
       <label className="field-label">Агент<select value={agent} onChange={event => setAgent(event.target.value)}>
@@ -188,7 +195,7 @@ function DialogueDetail({ orgId, id, name, close }: { orgId: string; id: string;
     },
     getNextPageParam: page => page.next_cursor == null ? undefined : Number(page.next_cursor),
   })
-  const row = detail.data
+  const row = detail.isSuccess ? detail.data : undefined
   const messageItems = messages.data?.pages.flatMap(page => page.items) ?? []
   const eventItems = events.data?.pages.flatMap(page => page.items) ?? []
   return <aside className="history-pane" aria-label="Диалог">

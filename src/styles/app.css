@@ -935,6 +935,10 @@ dialog::backdrop { background: var(--color-overlay); }
 .history-search { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-sm); margin-bottom: var(--space-lg); }
 .history-search .field-label { flex: 1 1 220px; max-width: 440px; margin: 0; }
 .history-export-ready { margin-top: var(--space-md); }
+.history-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--space-sm); }
+.history-deletion > p { max-width: 240px; margin-top: var(--space-xs); }
+.history-deletion-dialog p { margin-top: var(--space-sm); }
+.history-deletion-dialog .field-label { margin-top: var(--space-md); }
 .history-content { display: grid; gap: var(--space-lg); }
 .history-content-open { grid-template-columns: minmax(0, 1fr) minmax(290px, .9fr); align-items: start; }
 .history-list { list-style: none; padding: 0; margin: 0 0 var(--space-md); }

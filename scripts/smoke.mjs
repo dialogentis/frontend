@@ -30,6 +30,15 @@ await page.evaluateOnNewDocument(() => {
       window.__dropChatResponse = false
       throw new TypeError('Simulated lost chat response')
     }
+    if (method === 'POST' && url.endsWith('/history/deletions')) {
+      const result = await response.clone().json()
+      if (window.__dropHistoryDeletionResponse) {
+        window.__dropHistoryDeletionResponse = false
+        window.__firstHistoryDeletion = result.job_id
+        throw new TypeError('Simulated lost history deletion response')
+      }
+      window.__sameHistoryDeletion = result.job_id === window.__firstHistoryDeletion
+    }
     if (window.__dropChatStartResponse && method === 'POST' && url.endsWith('/test-conversations')) {
       window.__dropChatStartResponse = false
       window.__firstChatId = (await response.clone().json()).conversation_id
@@ -465,6 +474,25 @@ try {
     assert.deepEqual(historyFile.data.filters, { channel_type: 'api' })
     assert.ok(historyFile.data.records.some(item => item.user_text === 'Абракадабра'
       && item.agent_messages.includes('Сумма: [скрыто]')))
+    await page.click('.history-export summary')
+    assert.equal(await page.$eval('.history-deletion > button', button => button.disabled), true)
+    await click('Сбросить поиск')
+    await click('Удалить историю')
+    await page.waitForSelector('.history-deletion-dialog[open]')
+    assert.match(await page.$eval('.history-deletion-dialog strong', item => item.textContent), /Внешний API/)
+    assert.equal(await page.$eval('.history-deletion-dialog [type="submit"]', button => button.disabled), true)
+    await page.type('[name="confirm_history_deletion"]', 'УДАЛИТЬ')
+    await page.evaluate(() => { window.__dropHistoryDeletionResponse = true })
+    await click('Подтвердить удаление')
+    await contains('Не удалось подтвердить запуск.')
+    await click('Подтвердить удаление')
+    await contains('История удалена. Диалогов: 1')
+    assert.equal(await page.evaluate(() => window.__sameHistoryDeletion), true)
+    await contains('Диалоги по этим фильтрам не найдены.')
+    assert.equal(await page.evaluate(async url => (await fetch(url)).status, exportUrl), 404)
+    const afterDeletion = await (await fetch(endpoint, request)).json()
+    assert.equal(afterDeletion.replayed, true)
+    assert.deepEqual(afterDeletion.messages, [])
     await click('Настройки')
     await page.waitForSelector('.organization-settings-form input[type="checkbox"]:checked')
     await page.click('.organization-settings-form input[type="checkbox"]:checked')
@@ -475,7 +503,8 @@ try {
     assert.equal(await page.$('[name="history_search"]'), null)
     assert.equal(await page.evaluate(async url => (await fetch(url)).status, exportUrl), 404)
     assert.deepEqual(errors, [])
-    console.log('PASS: history export is prepared by the queue and revoked after a privacy change')
+    console.log('PASS: history export is prepared by the queue and revoked after deletion')
+    console.log('PASS: filtered history deletion confirms the scope, survives a lost response and clears saved replies')
     console.log('PASS: dialogue search finds a saved reply and turns off with the privacy setting')
     console.log('PASS: release publishes from the workspace and runs through the external API')
   } else if (process.env.HANDOFF_ONLY) {
