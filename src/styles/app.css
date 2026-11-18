@@ -911,3 +911,21 @@ dialog::backdrop { background: var(--color-overlay); }
 .api-key-secret p, .api-key-row p { margin: var(--space-2xs) 0 0; }
 .api-key-list { margin: var(--space-lg) 0 0; padding: 0; list-style: none; }
 .api-key-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-sm); padding-block: var(--space-md); border-top: 1px solid var(--color-rule); overflow-wrap: anywhere; }
+
+.agent-channels { display: grid; gap: var(--space-xl); }
+.widget-channels { max-width: 880px; }
+.widget-channel-list { padding: 0; margin: var(--space-md) 0 0; list-style: none; }
+.widget-channel-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm); padding-block: var(--space-md); border-top: 1px solid var(--color-rule); }
+.widget-channel-meta { display: flex; align-items: flex-start; min-width: 0; gap: var(--space-sm); overflow-wrap: anywhere; }
+.widget-channel-meta p { margin: var(--space-2xs) 0 0; }
+.widget-channel-swatch { flex: 0 0 12px; height: 12px; border-radius: 50%; margin-top: 6px; border: 1px solid var(--color-rule); }
+.widget-settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); align-items: start; gap: var(--space-lg); padding-block: var(--space-lg); }
+.widget-settings-appearance { display: grid; grid-template-columns: minmax(0, .5fr) minmax(0, 1fr); gap: var(--space-md); }
+.widget-settings-form input[type="color"] { max-width: 64px; height: 38px; padding: 4px; }
+.widget-appearance-preview { display: grid; justify-items: end; gap: var(--space-sm); padding: var(--space-md); background: var(--color-paper); border: 1px solid var(--color-rule); }
+.widget-appearance-preview > p { justify-self: start; margin: 0 0 var(--space-xs); }
+.widget-appearance-preview[data-position="bottom-left"] { justify-items: start; }
+.widget-preview-card { width: min(100%, 260px); border: 1px solid var(--color-rule); border-top: 3px solid var(--widget-accent); background: var(--color-plate); padding: var(--space-md); overflow-wrap: anywhere; }
+.widget-preview-card p { margin: var(--space-xs) 0 0; white-space: pre-wrap; }
+.widget-preview-launcher { display: grid; place-items: center; width: 40px; height: 40px; border: 2px solid var(--widget-accent); border-radius: 50%; background: var(--color-plate); }
+@media (max-width: 740px) { .widget-settings-layout { grid-template-columns: 1fr; } }
