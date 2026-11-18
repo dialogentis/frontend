@@ -382,8 +382,40 @@ try {
     await click('Опубликовать версию 1')
     await contains('Версия 1 опубликована.')
     await page.waitForFunction(() => document.querySelector('.release-row')?.textContent.includes('текущая публикация'))
+    await click('Каналы')
+    await page.type('[name="api_key_name"]', 'Сервер сайта')
+    await click('Создать ключ')
+    await page.waitForSelector('[name="issued_api_key"]')
+    const secret = await page.$eval('[name="issued_api_key"]', input => input.value)
+    await click('Закрыть')
+    const runtime = `${base}/api/v1/runtime`
+    const rootId = new URL(page.url()).pathname.split('/').at(-1)
+    const auth = { Authorization: `Bearer ${secret}` }
+    const opened = await fetch(`${runtime}/agents/${rootId}/conversations`, {
+      method: 'POST', headers: { ...auth, 'Idempotency-Key': randomUUID() },
+    })
+    assert.equal(opened.status, 201)
+    const conversation = await opened.json()
+    const endpoint = `${runtime}/conversations/${conversation.conversation_id}/messages`
+    const request = {
+      method: 'POST',
+      headers: {
+        ...auth, 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID(),
+        'X-Conversation-Token': conversation.conversation_token,
+      },
+      body: JSON.stringify({ client_message_id: randomUUID(), text: 'Абракадабра' }),
+    }
+    const replied = await fetch(endpoint, request)
+    assert.equal(replied.status, 200)
+    const answer = await replied.json()
+    assert.equal(answer.sequence, 1)
+    assert.ok(answer.messages.length > 0)
+    assert.equal('trace' in answer, false)
+    const repeated = await (await fetch(endpoint, request)).json()
+    assert.equal(repeated.replayed, true)
+    assert.deepEqual(repeated.messages, answer.messages)
     assert.deepEqual(errors, [])
-    console.log('PASS: ready version publishes with a quality warning acknowledgement')
+    console.log('PASS: release publishes from the workspace and runs through the external API')
   } else if (process.env.HANDOFF_ONLY) {
     const [, , , orgId, , trainedAgent] = new URL(page.url()).pathname.split('/')
     const agentPath = `/api/v1/organizations/${orgId}/agents`
