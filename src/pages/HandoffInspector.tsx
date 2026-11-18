@@ -131,6 +131,11 @@ export function HandoffInspector({ orgId, agentId, node, flow, slots, names, edi
     {(agents.isError || versions.isError || remote.isError) && <p role="alert">Не удалось загрузить данные целевого агента.</p>}
     <label><input type="checkbox" checked={node.config.forward_current_message === true} disabled={!editable}
       onChange={event => onConfig({ forward_current_message: event.target.checked })}/>Передать текущее сообщение</label>
+    <label><input name="handoff_include_history" type="checkbox" checked={node.config.include_history === true}
+      disabled={!editable} onChange={event => onConfig({ include_history: event.target.checked })}/>
+      Передать сохранённую историю
+    </label>
+    <p className="field-help">До 20 последних реплик при включённом сохранении текста в пространстве.</p>
     {targetVersion && remote.isPending && <p role="status">Загрузка параметров версии…</p>}
     {remote.data && <Mapping key={`input:${targetVersion}`} title="Передача параметров" mapping={object(node.config.input_mapping)}
       from={slots} to={remote.data} editable={editable} onChange={value => onConfig({ input_mapping: value })}/>}

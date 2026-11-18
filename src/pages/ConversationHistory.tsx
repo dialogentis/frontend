@@ -16,6 +16,7 @@ const labels: Record<string, string> = {
   transition: 'Переход', fallback: 'Запрос не распознан', wait: 'Ожидание ввода', complete: 'Завершение',
   error: 'Ошибка', handoff: 'Передача агенту', returned: 'Возврат', slot_set: 'Присваивание',
   slot_filled: 'Параметр получен', fallback_limit: 'Лимит попыток',
+  handoff_history: 'Передана история', handoff_history_truncated: 'Передана часть истории',
 }
 const date = new Intl.DateTimeFormat('ru', { dateStyle: 'medium', timeStyle: 'short' })
 const formatDate = (value: string) => date.format(new Date(value))
@@ -220,6 +221,8 @@ function DialogueDetail({ orgId, id, name, close }: { orgId: string; id: string;
           {turn.error_code && <p className="field-help">Код ошибки <code>{turn.error_code}</code></p>}
           <ol>{turn.trace.map((event, index) => <li key={index}>
             <strong>{labels[event.event] ?? event.event}</strong> · <code>{event.node_type}</code>
+            {['handoff_history', 'handoff_history_truncated'].includes(event.event) && /^\d{1,2}$/.test(event.output ?? '') &&
+              <small>Реплик в контексте: {event.output}</small>}
             <small>{event.version_id ? `Версия ${event.version_id.slice(0, 8)} · ` : ''}Блок {event.node_id.slice(0, 8)}</small>
           </li>)}</ol>
         </details>)}

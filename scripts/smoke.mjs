@@ -532,15 +532,16 @@ try {
     const version = await page.$eval('[name="handoff_version"]', element => element.options[1].value)
     await page.select('[name="handoff_version"]', version)
     await contains('Передача параметров')
+    await page.click('[name="handoff_include_history"]')
     await page.select('[name="handoff_mode"]', 'transfer')
     await page.waitForFunction(() => !document.querySelector('.react-flow__node-handoff [data-handleid="returned"]'))
     await page.waitForFunction(async ({ path, id, version }) => {
       const draft = await (await fetch(`${path}/${id}/draft`)).json()
       return draft.config.flow.nodes.some(node => node.type === 'handoff' &&
-        node.config.mode === 'transfer' && node.config.target_version_id === version)
+        node.config.mode === 'transfer' && node.config.target_version_id === version && node.config.include_history === true)
     }, {}, { path: agentPath, id: newAgent.body.id, version })
     assert.deepEqual(errors, [])
-    console.log('PASS: handoff editor loads ready version and saves transfer')
+    console.log('PASS: handoff editor saves a pinned transfer with history enabled')
   } else if (process.env.CHAT_ONLY) {
     assert.deepEqual(errors, [])
     console.log('PASS: test chat and retry after lost response')
