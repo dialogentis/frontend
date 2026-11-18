@@ -13,19 +13,27 @@ export function TestChat({ orgId, agentId, versionId }: { orgId: string; agentId
   const [trace, setTrace] = useState<Event[]>([])
   const [text, setText] = useState('')
   const [pending, setPending] = useState<Pending | null>(null)
+  const [startKey, setStartKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   const start = async () => {
+    if (busy) return
+    const key = startKey ?? crypto.randomUUID()
+    setStartKey(key)
     setBusy(true); setError(''); setChat(null); setMessages([]); setTrace([]); setPending(null); setText('')
     try {
       const result = await api.POST('/api/v1/organizations/{org_id}/agents/{agent_id}/test-conversations', {
-        params: { path: { org_id: orgId, agent_id: agentId } }, body: { version_id: versionId, http_mode: 'mock' }, signal: AbortSignal.timeout(35_000),
+        params: { path: { org_id: orgId, agent_id: agentId }, header: { 'Idempotency-Key': key } },
+        body: { version_id: versionId, http_mode: 'mock' }, signal: AbortSignal.timeout(35_000),
       })
+      if (!result.response.ok && result.response.status < 500 && !result.response.headers.has('Retry-After')) setStartKey(null)
       check(result.response, result.error)
       if (!result.data) throw new Error('Некорректный ответ сервера')
+      setStartKey(null)
       setChat(result.data); setTrace(result.data.trace)
       setMessages(result.data.messages.map(text => ({ id: crypto.randomUUID(), role: 'agent', text })))
+      if (result.data.replayed && !result.data.replay_available) setError('Диалог восстановлен. Первый ответ недоступен, так как история не сохранилась.')
     } catch (e) { setError(e instanceof ApiError ? [e.message, ...e.details.map(item => typeof item.message === 'string' ? item.message : '').filter(Boolean).slice(0, 3)].join(' ') : 'Не удалось начать диалог. Попробуйте ещё раз.') }
     finally { setBusy(false) }
   }
@@ -51,7 +59,7 @@ export function TestChat({ orgId, agentId, versionId }: { orgId: string; agentId
   }
 
   return <section className="test-chat" aria-label="Тестовый чат">
-    <div className="section-heading"><div><h4>Тестовый чат</h4><p className="field-help">Диалог использует выбранную версию агента.</p></div><button type="button" className="button button-quiet" disabled={busy} onClick={() => void start()}>{chat ? 'Начать заново' : 'Начать диалог'}</button></div>
+    <div className="section-heading"><div><h4>Тестовый чат</h4><p className="field-help">Диалог использует выбранную версию агента.</p></div><button type="button" className="button button-quiet" disabled={busy} onClick={() => void start()}>{chat ? 'Начать заново' : startKey ? 'Проверить запуск' : 'Начать диалог'}</button></div>
     {error && <p role="alert" className="auth-error">{error}</p>}
     {chat && <><div className="test-chat-messages" role="log" aria-label="Сообщения диалога">{messages.map(message => <div key={message.id} className={`test-chat-message test-chat-message-${message.role}`}><small>{message.role === 'user' ? 'Вы' : 'Агент'}</small><p>{message.text}</p></div>)}{busy && <p role="status" className="field-help">Обрабатываем сообщение…</p>}</div>
       {chat.status === 'waiting_input' ? <form className="test-chat-form" onSubmit={event => void send(event)}><label htmlFor="test-chat-text">Сообщение агенту</label><div><input id="test-chat-text" value={text} maxLength={2000} disabled={busy || !!pending} onChange={event => setText(event.target.value)} placeholder="Введите сообщение"/><button className="button button-primary" disabled={busy || (!pending && !text.trim())}>{pending ? 'Повторить' : 'Отправить'}</button></div></form> : <p className="field-help">{chat.status === 'completed' ? 'Диалог завершён.' : 'Диалог завершился с ошибкой.'}</p>}

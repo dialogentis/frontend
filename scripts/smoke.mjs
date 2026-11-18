@@ -29,6 +29,15 @@ await page.evaluateOnNewDocument(() => {
       window.__dropChatResponse = false
       throw new TypeError('Simulated lost chat response')
     }
+    if (window.__dropChatStartResponse && method === 'POST' && url.endsWith('/test-conversations')) {
+      window.__dropChatStartResponse = false
+      window.__firstChatId = (await response.clone().json()).conversation_id
+      throw new TypeError('Simulated lost conversation start response')
+    }
+    if (window.__firstChatId && method === 'POST' && url.endsWith('/test-conversations')) {
+      const result = await response.clone().json()
+      window.__chatStartReplayed = result.replayed && result.conversation_id === window.__firstChatId
+    }
     if (window.__delayImportResponse && method === 'POST' && url.includes('/imports/') && url.endsWith('/apply')) {
       window.__delayImportResponse = false
       await new Promise(resolve => setTimeout(resolve, 1200))
@@ -305,8 +314,12 @@ try {
   assert.match(await page.$eval('.training-report', report => report.textContent), /F1 намерений ниже 78\s*%/)
   await contains('Сценарий ещё не проверен')
   assert.equal(await page.$$eval('.training-version-list button[aria-pressed]', buttons => buttons.length), 1)
+  await page.evaluate(() => { window.__dropChatStartResponse = true })
   await click('Начать диалог')
+  await page.waitForFunction(() => document.querySelector('.test-chat [role="alert"]')?.textContent.includes('Не удалось начать диалог'))
+  await page.$eval('.test-chat .section-heading button', button => button.click())
   await page.waitForSelector('#test-chat-text:not([disabled])')
+  assert.ok(await page.evaluate(() => window.__chatStartReplayed))
   const initialChatMessages = await page.$$('.test-chat-message-agent')
   await page.type('#test-chat-text', 'Где мой заказ?')
   await page.evaluate(() => { window.__dropChatResponse = true })

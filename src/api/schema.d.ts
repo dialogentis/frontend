@@ -10417,7 +10417,9 @@ export interface operations {
     start_chat_api_v1_organizations__org_id__agents__agent_id__test_conversations_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 org_id: string;
                 agent_id: string;
