@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { ChevronRight, X } from 'lucide-react'
-import { api, check } from '../api'
+import { ChevronRight, Search, X } from 'lucide-react'
+import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
 
 type Dialogue = components['schemas']['ConversationView']
@@ -31,8 +31,21 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
   const [agent, setAgent] = useState('')
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
+  const [phrase, setPhrase] = useState('')
+  const [submitted, setSubmitted] = useState('')
   const selected = params.get('dialogue')
   const path = { org_id: orgId }
+  const settings = useQuery({
+    queryKey: ['organization-settings', orgId], staleTime: 0,
+    queryFn: async ({ signal }) => {
+      const result = await api.GET('/api/v1/organizations/{org_id}', { params: { path }, signal })
+      check(result.response, result.error)
+      if (!result.data) throw new Error('Не удалось загрузить настройки')
+      return result.data
+    },
+  })
+  const canSearch = settings.data?.store_message_text === true
+  const text = canSearch ? submitted : ''
   const agents = useQuery({
     queryKey: ['history-agents', orgId],
     queryFn: async ({ signal }) => {
@@ -44,16 +57,23 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
     },
   })
   const dialogues = useInfiniteQuery({
-    queryKey: ['history-dialogues', orgId, agent, channel, status, start, end],
+    queryKey: ['history-dialogues', orgId, agent, channel, status, start, end, text],
     initialPageParam: '',
+    gcTime: text ? 0 : undefined,
     enabled: !start || !end || start <= end,
     queryFn: async ({ signal, pageParam }) => {
-      const result = await api.GET('/api/v1/organizations/{org_id}/conversations', {
-        params: { path, query: {
-          limit: 25, cursor: pageParam || undefined, agent_id: agent || undefined, channel_type: channel || undefined,
-          status: status || undefined, from: fromDate(start), to: fromDate(end, true),
-        } }, signal,
-      })
+      const filters = {
+        agent_id: agent || undefined, channel_type: channel || undefined, status: status || undefined,
+        from: fromDate(start), to: fromDate(end, true),
+      }
+      const page = { limit: 25, cursor: pageParam || undefined }
+      const result = text
+        ? await api.POST('/api/v1/organizations/{org_id}/conversations/search', {
+          params: { path }, body: { text, filters, ...page }, signal,
+        })
+        : await api.GET('/api/v1/organizations/{org_id}/conversations', {
+          params: { path, query: { ...filters, ...page } }, signal,
+        })
       check(result.response, result.error)
       if (!result.data) throw new Error('Не удалось получить диалоги')
       return result.data
@@ -77,12 +97,31 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
       <label className="field-label">С<input type="date" value={start} onChange={event => setStart(event.target.value)}/></label>
       <label className="field-label">По<input type="date" value={end} onChange={event => setEnd(event.target.value)}/></label>
     </div>
+    {canSearch && <form className="history-search" onSubmit={event => {
+      event.preventDefault()
+      const value = phrase.trim()
+      if (value.length < 2 || value.length > 120) return
+      setSubmitted(value)
+      setParams({})
+    }}>
+      <label className="field-label">Текст сообщения
+        <input name="history_search" type="search" value={phrase} minLength={2} maxLength={120}
+          onChange={event => setPhrase(event.target.value)} autoComplete="off" />
+      </label>
+      <button type="submit" className="button button-primary" disabled={phrase.trim().length < 2}><Search size={16}/>Найти</button>
+      {!!submitted && <button type="button" className="button button-quiet"
+        onClick={() => { setSubmitted(''); setPhrase(''); setParams({}) }}>Сбросить поиск</button>}
+    </form>}
+    {settings.data?.store_message_text === false && <p className="field-help">Поиск доступен при включённом сохранении текста.</p>}
     {start && end && start > end ? <p role="alert">Дата начала должна быть раньше даты окончания.</p> :
       <div className={selected ? 'history-content history-content-open' : 'history-content'}>
         <div>
           {dialogues.isPending && <p role="status">Загрузка диалогов…</p>}
-          {dialogues.isError && <Retry message="Не удалось загрузить диалоги." retry={() => void dialogues.refetch()}/>}
-          {dialogues.isSuccess && !items.length && <p className="field-help">Диалоги по этим фильтрам не найдены.</p>}
+          {dialogues.isError && <Retry message={dialogues.error instanceof ApiError
+            ? dialogues.error.message : 'Не удалось загрузить диалоги.'} retry={() => void dialogues.refetch()}/>}
+          {dialogues.isSuccess && !items.length && <p className="field-help">
+            {text && dialogues.hasNextPage ? 'В просмотренной части истории совпадений пока нет.' : 'Диалоги по этим фильтрам не найдены.'}
+          </p>}
           <ul className="history-list">{items.map(item => <li key={item.id}>
             <button type="button" className="history-list-item" aria-pressed={item.id === selected}
               onClick={() => setParams({ dialogue: item.id })}>
@@ -91,7 +130,7 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
             </button>
           </li>)}</ul>
           {dialogues.hasNextPage && <button type="button" className="button button-quiet" disabled={dialogues.isFetchingNextPage}
-            onClick={() => void dialogues.fetchNextPage()}>Показать ещё диалоги</button>}
+            onClick={() => void dialogues.fetchNextPage()}>{text ? 'Продолжить поиск' : 'Показать ещё диалоги'}</button>}
         </div>
         {selected && <DialogueDetail key={selected} orgId={orgId} id={selected}
           name={name} close={() => setParams({})}/>}

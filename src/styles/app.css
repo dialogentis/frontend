@@ -932,6 +932,8 @@ dialog::backdrop { background: var(--color-overlay); }
 .widget-embed .code-block { white-space: pre-wrap; overflow-wrap: anywhere; }
 .history-filters { display: flex; flex-wrap: wrap; gap: var(--space-md); }
 .history-filters .field-label { flex: 1 1 130px; min-width: 0; }
+.history-search { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+.history-search .field-label { flex: 1 1 220px; max-width: 440px; margin: 0; }
 .history-content { display: grid; gap: var(--space-lg); }
 .history-content-open { grid-template-columns: minmax(0, 1fr) minmax(290px, .9fr); align-items: start; }
 .history-list { list-style: none; padding: 0; margin: 0 0 var(--space-md); }
