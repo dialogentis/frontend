@@ -432,9 +432,24 @@ try {
     assert.equal('trace' in answer, false)
     const repeated = await (await fetch(endpoint, request)).json()
     assert.equal(repeated.replayed, true)
-    assert.deepEqual(repeated.messages, answer.messages)
+    assert.deepEqual(repeated.messages, answer.messages.map(message => ({
+      ...message, text: message.text.replaceAll('100.25', '[скрыто]'),
+    })))
     await verifyWidget(browser, page, click)
+    await page.bringToFront()
+    await click('Диалоги')
+    await page.waitForSelector('.history-filters')
+    await page.select('.history-filters label:nth-child(2) select', 'api')
+    await page.waitForFunction(() => document.querySelector('.history-list-item')?.textContent.includes('Внешний API'))
+    await page.click('.history-list-item')
+    await page.waitForFunction(() => {
+      const texts = [...document.querySelectorAll('.history-pane .history-message p')].map(item => item.textContent)
+      return texts.includes('Абракадабра') && texts.includes('Сумма: [скрыто]')
+    })
+    await click('Трассировка')
+    await page.waitForFunction(() => document.querySelector('.history-turn')?.textContent.includes('Версия'))
     assert.deepEqual(errors, [])
+    console.log('PASS: real dialogue history shows masked messages and the version trace')
     console.log('PASS: release publishes from the workspace and runs through the external API')
   } else if (process.env.HANDOFF_ONLY) {
     const [, , , orgId, , trainedAgent] = new URL(page.url()).pathname.split('/')

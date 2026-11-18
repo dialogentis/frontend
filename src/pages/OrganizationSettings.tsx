@@ -42,6 +42,9 @@ function SettingsForm({ initial, reload, saved, onSaved, onEdited }: { initial: 
       if (!result.data) throw new Error('Некорректный ответ сервера')
       onSaved()
       cache.setQueryData(['organization-settings', initial.id], result.data)
+      cache.removeQueries({ predicate: query =>
+        query.queryKey[1] === initial.id && String(query.queryKey[0]).startsWith('history-'),
+      })
       await cache.invalidateQueries({ queryKey: ['organizations'] })
     } catch (e) { setError(e instanceof ApiError ? e.message : 'Не удалось сохранить настройки.') }
     finally { setBusy(false) }
@@ -54,7 +57,7 @@ function SettingsForm({ initial, reload, saved, onSaved, onEdited }: { initial: 
       <label className="settings-checkbox"><input type="checkbox" checked={store} disabled={!editable || busy} onChange={event => { if (!event.target.checked) setPurge(true); setStore(event.target.checked); onEdited() }}/>Сохранять текст сообщений</label>
       <p className="field-help">При отключении текст не сохраняется для последующего просмотра. Параметры, необходимые для продолжения активного диалога, временно хранятся в защищённом виде.</p>
       {!store && editable && <label className="settings-checkbox"><input type="checkbox" checked={purge} disabled={busy} onChange={event => { setPurge(event.target.checked); onEdited() }}/>Удалить ранее сохранённый текст</label>}
-      <p className="field-help">Сейчас настройки применяются к ответам тестового чата; история опубликованных диалогов ещё не доступна.</p>
+      <p className="field-help">Настройки действуют для тестового чата, виджета и внешнего API.</p>
       {error && <div role="alert" className="auth-error">{error} <button type="button" className="button button-text" onClick={() => void reload()}>Обновить настройки</button></div>}
       {saved && !error && <p role="status">Настройки сохранены.</p>}
       {editable && <button className="button button-primary" disabled={busy || !name.trim() || !Number.isInteger(days) || days < 1 || days > 30}>{busy ? 'Сохранение…' : 'Сохранить'}</button>}
