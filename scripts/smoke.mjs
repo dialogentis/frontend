@@ -119,6 +119,28 @@ try {
   await click('Консультант')
   await page.waitForFunction(() => location.pathname.includes('/agents/'))
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
+  await click('Каналы')
+  await contains('У агента пока нет ключей')
+  await page.type('[name="api_key_name"]', 'Сайт магазина')
+  await click('Создать ключ')
+  await page.waitForSelector('[name="issued_api_key"]')
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true, value: { writeText: async value => {
+        window.__apiKeyCopied = value === document.querySelector('[name="issued_api_key"]').value && /^dg_[A-Za-z0-9_-]{43}$/.test(value)
+      } },
+    })
+  })
+  await click('Скопировать ключ')
+  await contains('Ключ скопирован.')
+  assert.equal(await page.evaluate(() => window.__apiKeyCopied), true)
+  await page.evaluate(() => { delete navigator.clipboard })
+  await click('Закрыть')
+  await page.waitForSelector('[name="issued_api_key"]', { hidden: true })
+  await click('Отозвать ключ')
+  await click('Подтвердить отзыв')
+  await page.waitForFunction(() => document.querySelector('.api-key-row')?.textContent.includes('Отозван'))
+  await click('Сценарий')
   await click('Начать редактирование')
   await contains('Сохранено')
   await click('Параметры')

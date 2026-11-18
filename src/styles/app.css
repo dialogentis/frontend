@@ -902,3 +902,12 @@ dialog::backdrop { background: var(--color-overlay); }
 .condition-actions { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .condition-inspector select, .condition-inspector input { width: 100%; }
+
+.agent-api-keys { max-width: 880px; }
+.api-key-form { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: start; margin-block: var(--space-lg); }
+.api-key-form .field-label { flex: 1 1 190px; min-width: 0; }
+.api-key-form > button { margin-top: var(--space-lg); }
+.api-key-secret { display: grid; gap: var(--space-sm); padding: var(--space-md); border: 1px solid var(--color-rule); background: var(--color-paper); margin-block: var(--space-lg); }
+.api-key-secret p, .api-key-row p { margin: var(--space-2xs) 0 0; }
+.api-key-list { margin: var(--space-lg) 0 0; padding: 0; list-style: none; }
+.api-key-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-sm); padding-block: var(--space-md); border-top: 1px solid var(--color-rule); overflow-wrap: anywhere; }
