@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
+import { HistoryExportPanel } from './HistoryExportPanel'
 
 type Dialogue = components['schemas']['ConversationView']
 const channels: Record<Dialogue['channel_type'], string> = { test: 'Тестовый чат', api: 'Внешний API', widget: 'Виджет' }
@@ -20,6 +21,7 @@ const formatDate = (value: string) => date.format(new Date(value))
 const fromDate = (value: string, through = false) => {
   if (!value) return undefined
   const result = new Date(`${value}T00:00:00`)
+  if (!Number.isFinite(result.getTime())) return undefined
   if (through) result.setDate(result.getDate() + 1)
   return result.toISOString()
 }
@@ -45,6 +47,12 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
     },
   })
   const canSearch = settings.data?.store_message_text === true
+  const canExport = settings.data?.role === 'owner' || settings.data?.role === 'admin'
+  const filters = {
+    agent_id: agent || undefined, channel_type: channel || undefined, status: status || undefined,
+    from: fromDate(start), to: fromDate(end, true),
+  }
+  const validPeriod = !start || !end || start <= end
   const text = canSearch ? submitted : ''
   const agents = useQuery({
     queryKey: ['history-agents', orgId],
@@ -60,12 +68,8 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
     queryKey: ['history-dialogues', orgId, agent, channel, status, start, end, text],
     initialPageParam: '',
     gcTime: text ? 0 : undefined,
-    enabled: !start || !end || start <= end,
+    enabled: validPeriod,
     queryFn: async ({ signal, pageParam }) => {
-      const filters = {
-        agent_id: agent || undefined, channel_type: channel || undefined, status: status || undefined,
-        from: fromDate(start), to: fromDate(end, true),
-      }
       const page = { limit: 25, cursor: pageParam || undefined }
       const result = text
         ? await api.POST('/api/v1/organizations/{org_id}/conversations/search', {
@@ -83,7 +87,10 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
   const items = dialogues.data?.pages.flatMap(page => page.items) ?? []
   const name = (id: string) => agents.data?.find(item => item.id === id)?.name ?? id.slice(0, 8)
   return <section className="workspace-history">
-    <div className="page-heading"><div><h1>Диалоги</h1><p>История тестовых и опубликованных агентов</p></div></div>
+    <div className="page-heading"><div><h1>Диалоги</h1><p>История тестовых и опубликованных агентов</p></div>
+      {canExport && settings.data && <HistoryExportPanel orgId={orgId} filters={filters} valid={validPeriod}
+        revision={settings.data.settings_revision}/>}
+    </div>
     <div className="history-filters">
       <label className="field-label">Агент<select value={agent} onChange={event => setAgent(event.target.value)}>
         <option value="">Все агенты</option>{agents.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}

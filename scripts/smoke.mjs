@@ -452,6 +452,19 @@ try {
     })
     await click('Трассировка')
     await page.waitForFunction(() => document.querySelector('.history-turn')?.textContent.includes('Версия'))
+    await page.waitForSelector('.history-export summary')
+    await page.click('.history-export summary')
+    await click('Подготовить выгрузку')
+    await page.waitForSelector('.history-export-ready a', { timeout: 30_000 })
+    const exportUrl = await page.$eval('.history-export-ready a', link => link.href)
+    const historyFile = await page.evaluate(async url => {
+      const response = await fetch(url)
+      return { status: response.status, data: await response.json() }
+    }, exportUrl)
+    assert.equal(historyFile.status, 200)
+    assert.deepEqual(historyFile.data.filters, { channel_type: 'api' })
+    assert.ok(historyFile.data.records.some(item => item.user_text === 'Абракадабра'
+      && item.agent_messages.includes('Сумма: [скрыто]')))
     await click('Настройки')
     await page.waitForSelector('.organization-settings-form input[type="checkbox"]:checked')
     await page.click('.organization-settings-form input[type="checkbox"]:checked')
@@ -460,7 +473,9 @@ try {
     await click('Диалоги')
     await contains('Поиск доступен при включённом сохранении текста.')
     assert.equal(await page.$('[name="history_search"]'), null)
+    assert.equal(await page.evaluate(async url => (await fetch(url)).status, exportUrl), 404)
     assert.deepEqual(errors, [])
+    console.log('PASS: history export is prepared by the queue and revoked after a privacy change')
     console.log('PASS: dialogue search finds a saved reply and turns off with the privacy setting')
     console.log('PASS: release publishes from the workspace and runs through the external API')
   } else if (process.env.HANDOFF_ONLY) {
