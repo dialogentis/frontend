@@ -332,7 +332,41 @@ try {
   await click('Повторить')
   await page.waitForFunction(count => document.querySelectorAll('.test-chat-message-agent').length > count, {}, initialChatMessages.length)
   assert.equal(await page.$$eval('.test-chat-message-user', messages => messages.length), 1)
-  if (process.env.CHAT_ONLY) {
+  if (process.env.HANDOFF_ONLY) {
+    const [, , , orgId, , trainedAgent] = new URL(page.url()).pathname.split('/')
+    const agentPath = `/api/v1/organizations/${orgId}/agents`
+    const newAgent = await page.evaluate(async path => {
+      const session = await (await fetch('/api/v1/auth/me')).json()
+      const response = await fetch(path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf_token },
+        body: JSON.stringify({ name: 'Маршрутизация', slug: 'handoff-root' }),
+      })
+      return { status: response.status, body: await response.json() }
+    }, agentPath)
+    assert.equal(newAgent.status, 201)
+    await page.goto(`${base}/app/o/${orgId}/agents/${newAgent.body.id}`)
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
+    await click('Начать редактирование')
+    await page.waitForFunction(() => [...document.querySelectorAll('.draft-toolbar button')].some(button => button.textContent.trim() === 'Другой агент'))
+    await click('Другой агент')
+    await page.waitForSelector('.react-flow__node-handoff')
+    await page.click('.react-flow__node-handoff')
+    await page.waitForSelector(`[name="handoff_agent"] option[value="${trainedAgent}"]`)
+    await page.select('[name="handoff_agent"]', trainedAgent)
+    await page.waitForFunction(() => document.querySelectorAll('[name="handoff_version"] option').length > 1)
+    const version = await page.$eval('[name="handoff_version"]', element => element.options[1].value)
+    await page.select('[name="handoff_version"]', version)
+    await contains('Передача параметров')
+    await page.select('[name="handoff_mode"]', 'transfer')
+    await page.waitForFunction(() => !document.querySelector('.react-flow__node-handoff [data-handleid="returned"]'))
+    await page.waitForFunction(async ({ path, id, version }) => {
+      const draft = await (await fetch(`${path}/${id}/draft`)).json()
+      return draft.config.flow.nodes.some(node => node.type === 'handoff' &&
+        node.config.mode === 'transfer' && node.config.target_version_id === version)
+    }, {}, { path: agentPath, id: newAgent.body.id, version })
+    assert.deepEqual(errors, [])
+    console.log('PASS: handoff editor loads ready version and saves transfer')
+  } else if (process.env.CHAT_ONLY) {
     assert.deepEqual(errors, [])
     console.log('PASS: test chat and retry after lost response')
   } else {
