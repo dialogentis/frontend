@@ -2945,7 +2945,7 @@ export interface components {
             /** Predicted */
             predicted: string | null;
             /** Fallback Reasons */
-            fallback_reasons: ("empty_features" | "low_score" | "ambiguous_intent" | "low_similarity")[];
+            fallback_reasons: ("empty_features" | "low_score" | "ambiguous_intent" | "low_similarity" | "low_vocabulary_coverage")[];
         };
         /** IntentSummary */
         IntentSummary: {
@@ -3207,6 +3207,16 @@ export interface components {
              * @default 0.2
              */
             similarity: number;
+            /**
+             * Vocabulary Coverage
+             * @default 0
+             */
+            vocabulary_coverage: number;
+            /**
+             * Classifier C
+             * @default 1
+             */
+            classifier_c: number;
         };
         /** OrganizationInput */
         OrganizationInput: {
