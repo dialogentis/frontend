@@ -87,7 +87,14 @@ export function OrganizationAudit({ orgId }: { orgId: string }) {
     {events.isError && <p role="alert">Не удалось загрузить журнал. <button type="button" className="button button-quiet"
       onClick={() => void events.refetch()}>Повторить</button></p>}
     {events.isSuccess && !items.length && <p className="field-help">Таких действий пока нет.</p>}
-    <ol className="audit-list">{items.map(item => {
+    <AuditRows items={items}/>
+    {events.hasNextPage && <button type="button" className="button button-quiet" disabled={events.isFetchingNextPage}
+      onClick={() => void events.fetchNextPage()}>Показать ещё</button>}
+  </section>
+}
+
+export function AuditRows({ items }: { items: components['schemas']['AuditView'][] }) {
+  return <ol className="audit-list">{items.map(item => {
       const details = description(item.details)
       return <li key={item.id} className="event-row">
         <ShieldCheck size={18} aria-hidden="true"/>
@@ -98,7 +105,4 @@ export function OrganizationAudit({ orgId }: { orgId: string }) {
         <time dateTime={item.created_at}>{time.format(new Date(item.created_at))}</time>
       </li>
     })}</ol>
-    {events.hasNextPage && <button type="button" className="button button-quiet" disabled={events.isFetchingNextPage}
-      onClick={() => void events.fetchNextPage()}>Показать ещё</button>}
-  </section>
 }

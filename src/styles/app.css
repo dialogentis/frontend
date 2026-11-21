@@ -954,7 +954,15 @@ dialog::backdrop { background: var(--color-overlay); }
 .audit-list .event-row > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .audit-list .event-row > svg { flex-shrink: 0; color: var(--color-muted); }
 .audit-list time { color: var(--color-muted); font-size: var(--text-label); text-align: right; }
+.workspace-overview-link { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.workspace-overview .overview-register { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.workspace-overview .overview-register a { color: var(--color-ink-2); font-size: var(--text-label); }
+.overview-broker { display: flex; flex-wrap: wrap; gap: var(--space-md) var(--space-xl); margin-bottom: var(--space-md); }
+.overview-broker dt { color: var(--color-muted); font-size: var(--text-label); }
+.overview-broker dd { margin: var(--space-xs) 0 0; font-size: var(--text-data); }
+.overview-audit { margin-top: var(--space-xl); }
 @media (max-width: 760px) {
+  .workspace-overview .overview-register { grid-template-columns: minmax(0, 1fr); }
   .workspace-analytics .analytics-register { grid-template-columns: minmax(0, 1fr); }
   .workspace-analytics .analytics-register > div { flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); }
 }

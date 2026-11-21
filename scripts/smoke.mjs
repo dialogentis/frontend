@@ -515,6 +515,23 @@ try {
     await page.select('[name="audit_action"]', 'history.deleted')
     await page.waitForFunction(() => document.querySelector('.audit-list .event-row')?.textContent.includes('Удалено диалогов: 1'))
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    await page.setViewport({ width: 1280, height: 800 })
+    await click('Обзор')
+    await page.waitForFunction(() => {
+      const dialogues = document.querySelector('[data-overview="dialogues"]')
+      const broker = document.querySelector('.overview-broker')?.textContent
+      return Number(dialogues?.textContent) >= 2 && broker?.includes('Доступен') && broker.includes('Подключён')
+    })
+    await page.select('[name="overview_period"]', '1')
+    await click('Диалоги на рабочих каналах')
+    await page.waitForSelector('[name="analytics_channel"]')
+    const reportPeriod = new URL(page.url()).searchParams
+    assert.equal(reportPeriod.get('from'), reportPeriod.get('to'))
+    assert.equal(await page.$eval('.analytics-filters input[type="date"]', input => input.value), reportPeriod.get('from'))
+    await page.goBack()
+    await page.waitForSelector('[name="overview_job_status"]')
+    await page.select('[name="overview_job_status"]', 'succeeded')
+    await page.waitForFunction(() => document.querySelector('.overview-jobs')?.textContent.includes('Удаление истории'))
     assert.deepEqual(errors, [])
     console.log('PASS: history export is prepared by the queue and revoked after deletion')
     console.log('PASS: filtered history deletion confirms the scope, survives a lost response and clears saved replies')
@@ -522,6 +539,7 @@ try {
     console.log('PASS: release publishes from the workspace and runs through the external API')
     console.log('PASS: the analytics page shows one API dialogue and message after deletion and replay')
     console.log('PASS: the audit page shows the history deletion and its counts on a mobile viewport')
+    console.log('PASS: the overview links to its reporting period and shows completed jobs and the live broker')
   } else if (process.env.HANDOFF_ONLY) {
     const [, , , orgId, , trainedAgent] = new URL(page.url()).pathname.split('/')
     const agentPath = `/api/v1/organizations/${orgId}/agents`

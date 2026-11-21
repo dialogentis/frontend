@@ -817,6 +817,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{org_id}/jobs/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workspace Jobs */
+        get: operations["workspace_jobs_api_v1_organizations__org_id__jobs_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{org_id}/agents/{agent_id}/exports": {
         parameters: {
             query?: never;
@@ -3004,6 +3021,19 @@ export interface components {
             /** Accepted */
             accepted: boolean;
         };
+        /** JobBrokerState */
+        JobBrokerState: {
+            /**
+             * Status
+             * @default unavailable
+             * @enum {string}
+             */
+            status: "available" | "unavailable";
+            /** @default unknown */
+            normal_worker: components["schemas"]["WorkerState"];
+            /** @default unknown */
+            training_worker: components["schemas"]["WorkerState"];
+        };
         JsonValue: unknown;
         /** @enum {string} */
         KeyScope: "conversation:create" | "message:send";
@@ -3272,6 +3302,8 @@ export interface components {
              */
             entity_f1: number;
         };
+        /** @enum {string} */
+        QueuePhase: "retry_wait" | "dispatch_wait" | "worker_wait";
         /** ReceiptView */
         ReceiptView: {
             /**
@@ -3869,6 +3901,61 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** @enum {string} */
+        WorkerState: "listening" | "absent" | "unknown";
+        /** WorkspaceJob */
+        WorkspaceJob: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /**
+             * Queue
+             * @enum {string}
+             */
+            queue: "normal" | "training";
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /** Error Code */
+            error_code: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Retry At */
+            retry_at: string | null;
+            phase: components["schemas"]["QueuePhase"] | null;
+        };
+        /** WorkspaceJobs */
+        WorkspaceJobs: {
+            /** Items */
+            items: components["schemas"]["WorkspaceJob"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Active Agents */
+            active_agents: number;
+            /** Queued */
+            queued: number;
+            /** Running */
+            running: number;
+            /** Failed */
+            failed: number;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            broker: components["schemas"]["JobBrokerState"];
         };
     };
     responses: never;
@@ -11846,6 +11933,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Locked */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    workspace_jobs_api_v1_organizations__org_id__jobs_queue_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: ("queued" | "running" | "succeeded" | "failed" | "cancelled") | "active" | null;
+            };
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceJobs"];
                 };
             };
             /** @description Bad Request */

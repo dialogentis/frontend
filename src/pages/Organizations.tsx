@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AudioLines, Boxes, LogOut, MessageSquare, Moon, Network, Plus, Settings2, ShieldCheck, Sun, Users } from 'lucide-react'
+import { AudioLines, Boxes, LayoutDashboard, LogOut, MessageSquare, Moon, Network, Plus, Settings2, ShieldCheck, Sun, Users } from 'lucide-react'
 import { api, check } from '../api'
 import { useSession } from '../Session'
 import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
@@ -16,6 +16,7 @@ const OrganizationSettings = lazy(() => import('./OrganizationSettings').then(mo
 const ConversationHistory = lazy(() => import('./ConversationHistory').then(module => ({ default: module.ConversationHistory })))
 const OrganizationAnalytics = lazy(() => import('./OrganizationAnalytics').then(module => ({ default: module.OrganizationAnalytics })))
 const OrganizationAudit = lazy(() => import('./OrganizationAudit').then(module => ({ default: module.OrganizationAudit })))
+const OrganizationOverview = lazy(() => import('./OrganizationOverview').then(module => ({ default: module.OrganizationOverview })))
 const Integrations = lazy(() => import('./Integrations').then(module => ({ default: module.Integrations })))
 
 const schema = z.object({ name: z.string().trim().min(1, 'Укажите название').max(120), slug: z.string().regex(/^[a-z][a-z0-9-]{1,63}$/, 'От 2 до 64 латинских букв, цифр и дефисов') })
@@ -65,11 +66,13 @@ export function WorkspacePage() {
   const historyPage = location.pathname.endsWith('/conversations')
   const analyticsPage = location.pathname.endsWith('/analytics')
   const auditPage = location.pathname.endsWith('/audit')
+  const overviewPage = location.pathname.endsWith('/overview')
   const canAudit = current.role === 'owner' || current.role === 'admin'
   const root = `/app/o/${current.id}`
   const links = [
+    { suffix: '/overview', label: 'Обзор', icon: LayoutDashboard, active: overviewPage },
     { suffix: '', label: 'Агенты', icon: Boxes, active: !membersPage && !settingsPage && !integrationsPage &&
-      !historyPage && !analyticsPage && !auditPage },
+      !historyPage && !analyticsPage && !auditPage && !overviewPage },
     { suffix: '/conversations', label: 'Диалоги', icon: MessageSquare, active: historyPage },
     { suffix: '/analytics', label: 'Аналитика', icon: AudioLines, active: analyticsPage },
     { suffix: '/integrations', label: 'Интеграции', icon: Network, active: integrationsPage },
@@ -88,7 +91,7 @@ export function WorkspacePage() {
       <Link className="nav-link" to="/app/organizations">Все пространства</Link>
     </nav>
     <div className="sidebar-bottom"><div className="user-profile"><span className="user-avatar">Вы</span><span><strong>{session.user.email}</strong><small>{role}</small></span></div></div>
-  </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><span>{current.name}</span></div><div className="topbar-actions">
+  </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><Link className="workspace-overview-link" to={`${root}/overview`} title="Обзор пространства">{current.name}</Link></div><div className="topbar-actions">
     <Link className="button button-text workspace-mobile-members" to={membersPage ? root : `${root}/members`}>{membersPage ? 'Агенты' : 'Участники'}</Link>
     <Link className="button icon-button workspace-mobile-members" aria-label="Настройки пространства" to={`${root}/settings`}><Settings2 size={18}/></Link>
     <Link className="button icon-button workspace-mobile-members" aria-label="Диалоги" to={`${root}/conversations`}><MessageSquare size={18}/></Link>
@@ -98,7 +101,9 @@ export function WorkspacePage() {
     <button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
     <button className="button button-text" onClick={() => { if (!editorDirty || window.confirm('Есть несохранённые изменения. Выйти из аккаунта?')) void logout().then(() => navigate('/login')).catch(e => setError(e.message)) }}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page">
     {error && <p role="alert" className="auth-error">{error}</p>}
-    {auditPage ? (canAudit ? <Suspense fallback={<p role="status">Загрузка журнала…</p>}>
+    {overviewPage ? <Suspense fallback={<p role="status">Загрузка обзора…</p>}>
+      <OrganizationOverview key={current.id} orgId={current.id} canAudit={canAudit}/>
+    </Suspense> : auditPage ? (canAudit ? <Suspense fallback={<p role="status">Загрузка журнала…</p>}>
       <OrganizationAudit key={current.id} orgId={current.id}/>
     </Suspense> : <p role="alert">Журнал доступен владельцу и администраторам пространства.</p>) :
       analyticsPage ? <Suspense fallback={<p role="status">Загрузка аналитики…</p>}><OrganizationAnalytics key={current.id} orgId={current.id}/></Suspense> : historyPage ? <Suspense fallback={<p role="status">Загрузка истории…</p>}><ConversationHistory key={current.id} orgId={current.id}/></Suspense> : integrationsPage ? <Suspense fallback={<p role="status">Загрузка интеграций…</p>}><Integrations key={current.id} orgId={current.id} role={current.role}/></Suspense> : settingsPage ? <Suspense fallback={<p role="status">Загрузка настроек…</p>}><OrganizationSettings key={current.id} orgId={current.id}/></Suspense> : membersPage ? <MembersPage key={current.id} orgId={current.id} name={current.name} role={current.role} userId={session.user.id}/> : agentId ? <Suspense fallback={<p role="status">Загрузка редактора…</p>}><WorkspaceDraft key={agentId} orgId={current.id} agentId={agentId} userId={session.user.id} role={current.role} onDirtyChange={setEditorDirty}/></Suspense> : <WorkspaceAgents key={current.id} orgId={current.id} role={current.role}/>}

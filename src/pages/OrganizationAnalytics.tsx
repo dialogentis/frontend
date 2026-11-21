@@ -1,30 +1,28 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { Activity } from 'lucide-react'
 import { api, check } from '../api'
 import type { components, paths } from '../api/schema'
+import { analyticsPeriod, utcDay } from './analyticsPeriod'
 
 type Report = components['schemas']['AnalyticsView']
 type Filters = NonNullable<paths['/api/v1/organizations/{org_id}/analytics']['get']['parameters']['query']>
 const number = new Intl.NumberFormat('ru')
 const percentage = new Intl.NumberFormat('ru', { style: 'percent', maximumFractionDigits: 1 })
 const shortDay = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-const utcDay = (day: string) => new Date(`${day}T00:00:00Z`)
-const dateInZone = (zone: string) => {
-  const parts = new Intl.DateTimeFormat('ru', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts()
-  return ['year', 'month', 'day'].map(name => parts.find(part => part.type === name)?.value).join('-')
-}
 const channelOptions = {
   production: 'Рабочие каналы', api: 'Внешний API', widget: 'Виджет', test: 'Тестовый чат', all: 'Все каналы',
 }
 
 export function OrganizationAnalytics({ orgId }: { orgId: string }) {
   const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  const [params] = useSearchParams()
   const [filters, setFilters] = useState<Filters>(() => {
-    const today = dateInZone(localZone)
-    const weekStart = utcDay(today)
-    weekStart.setUTCDate(weekStart.getUTCDate() - 6)
-    return { from: weekStart.toISOString().slice(0, 10), to: today, time_zone: localZone,
+    const period = analyticsPeriod(7, localZone)
+    const from = params.get('from')
+    const to = params.get('to')
+    return { ...period, from: from || period.from, to: to || period.to,
       channel: 'production', intent_scope: 'root' }
   })
   const start = filters.from || ''
