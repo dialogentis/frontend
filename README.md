@@ -21,6 +21,7 @@ Vite доступен на http://127.0.0.1:5178, запросы `/api` напр
 
 ```sh
 npm run typecheck
+npm run test:unit
 npm run build
 npm run api:generate
 ```
