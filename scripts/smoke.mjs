@@ -799,6 +799,11 @@ try {
   const invitation = await mailLink('Приглашение', guestEmail)
   await page.reload({ waitUntil: 'networkidle0' })
   await contains('Рабочая команда')
+  await page.setViewport({ width: 320, height: 844 })
+  assert.ok(await page.$eval('.breadcrumbs a[href="/app/organizations"]', link => {
+    const { x, y, width, height } = link.getBoundingClientRect()
+    return link.contains(document.elementFromPoint(x + width / 2, y + height / 2))
+  }))
   await page.setViewport({ width: 390, height: 844 })
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await click('Пространства')
