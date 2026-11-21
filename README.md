@@ -1,10 +1,12 @@
 # Dialogentis · frontend
 
-Кабинет на React, TypeScript и Vite. Авторизация, рабочие пространства, приглашения, роли участников и передача владения подключены к API. Управление агентами ещё разрабатывается; исходники прежнего дизайн-прототипа сохранены для следующих этапов и не подключены к рабочему кабинету.
+Кабинет на React, TypeScript и Vite. API обслуживает авторизацию, рабочие пространства, редактор сценариев, обучение, тестовый чат, публикации, каналы, историю, аналитику и аудит.
 
 ## Запуск
 
 Поместите репозитории `frontend` и `backend` рядом и запустите сервисы по инструкции в [backend/README.md](../backend/README.md). Кабинет с API доступен на http://localhost:18080; письма локальной среды — в Mailpit на http://localhost:18025.
+
+Для production используйте HTTPS и конфигурацию из [инструкции backend](../backend/README.md#production).
 
 Для разработки интерфейса нужен Node.js 24:
 
@@ -26,7 +28,7 @@ npm run api:generate
 Типы клиента генерируются из `../backend/openapi.json`. Браузерная проверка использует отдельный Chrome/Chromium и Mailpit. Из каталога backend можно поднять изолированный стенд:
 
 ```sh
-PUBLIC_BASE_URL=http://localhost:18180 docker compose -p dialogentis-browser -f compose.yaml -f compose.browser-test.yaml --profile dev up --build -d frontend mailer mailpit
+PUBLIC_BASE_URL=http://localhost:18180 docker compose -p dialogentis-browser -f compose.yaml -f compose.browser-test.yaml --profile dev up --build -d frontend mailer mailpit dispatcher worker training-worker maintenance-worker scheduler runtime-watchdog
 ```
 
 Затем из frontend выполнить `CHROME_PATH=/absolute/path/to/chromium npm run test:smoke`. Для другого стенда адреса задаются `BASE_URL` и `MAILPIT_URL`. Тест регистрирует нового пользователя и создаёт пространство; используйте только тестовую среду. После проверки из backend удалите контейнеры и данные именно тестового проекта:
