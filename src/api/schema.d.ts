@@ -1919,6 +1919,8 @@ export interface components {
             /** Replay Available */
             replay_available: boolean;
         };
+        /** @enum {string} */
+        Check: "ok" | "unavailable";
         /** ClassMetrics */
         ClassMetrics: {
             /**
@@ -3416,6 +3418,15 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** RuntimeChecks */
+        RuntimeChecks: {
+            /** @default unavailable */
+            database: components["schemas"]["Check"];
+            /** @default unavailable */
+            schema_revision: components["schemas"]["Check"];
+            /** @default unavailable */
+            artifacts: components["schemas"]["Check"];
+        };
         /** RuntimeMessageInput */
         RuntimeMessageInput: {
             /**
@@ -3425,6 +3436,20 @@ export interface components {
             client_message_id: string;
             /** Text */
             text: string;
+        };
+        /** RuntimeReadiness */
+        RuntimeReadiness: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "unavailable";
+            checks: components["schemas"]["RuntimeChecks"];
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
         };
         /** @enum {string} */
         RuntimeStatus: "waiting_input" | "completed" | "failed";
@@ -17324,7 +17349,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["RuntimeReadiness"];
                 };
             };
             /** @description Bad Request */
@@ -17432,7 +17457,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RuntimeReadiness"];
                 };
             };
         };
