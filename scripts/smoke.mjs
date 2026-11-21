@@ -510,12 +510,18 @@ try {
     assert.ok(await page.$('.analytics-chart li'))
     await page.setViewport({ width: 360, height: 800 })
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    await page.click('.topbar a[aria-label="Аудит"]')
+    await page.waitForSelector('[name="audit_action"]')
+    await page.select('[name="audit_action"]', 'history.deleted')
+    await page.waitForFunction(() => document.querySelector('.audit-list .event-row')?.textContent.includes('Удалено диалогов: 1'))
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
     assert.deepEqual(errors, [])
     console.log('PASS: history export is prepared by the queue and revoked after deletion')
     console.log('PASS: filtered history deletion confirms the scope, survives a lost response and clears saved replies')
     console.log('PASS: dialogue search finds a saved reply and turns off with the privacy setting')
     console.log('PASS: release publishes from the workspace and runs through the external API')
     console.log('PASS: the analytics page shows one API dialogue and message after deletion and replay')
+    console.log('PASS: the audit page shows the history deletion and its counts on a mobile viewport')
   } else if (process.env.HANDOFF_ONLY) {
     const [, , , orgId, , trainedAgent] = new URL(page.url()).pathname.split('/')
     const agentPath = `/api/v1/organizations/${orgId}/agents`
