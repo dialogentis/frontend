@@ -502,11 +502,20 @@ try {
     await contains('Поиск доступен при включённом сохранении текста.')
     assert.equal(await page.$('[name="history_search"]'), null)
     assert.equal(await page.evaluate(async url => (await fetch(url)).status, exportUrl), 404)
+    await click('Аналитика')
+    await page.waitForSelector('[name="analytics_channel"]')
+    await page.select('[name="analytics_channel"]', 'api')
+    await page.waitForFunction(() => document.querySelector('[data-metric="dialogues"]')?.textContent === '1'
+      && document.querySelector('[data-metric="messages"]')?.textContent === '1')
+    assert.ok(await page.$('.analytics-chart li'))
+    await page.setViewport({ width: 360, height: 800 })
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
     assert.deepEqual(errors, [])
     console.log('PASS: history export is prepared by the queue and revoked after deletion')
     console.log('PASS: filtered history deletion confirms the scope, survives a lost response and clears saved replies')
     console.log('PASS: dialogue search finds a saved reply and turns off with the privacy setting')
     console.log('PASS: release publishes from the workspace and runs through the external API')
+    console.log('PASS: the analytics page shows one API dialogue and message after deletion and replay')
   } else if (process.env.HANDOFF_ONLY) {
     const [, , , orgId, , trainedAgent] = new URL(page.url()).pathname.split('/')
     const agentPath = `/api/v1/organizations/${orgId}/agents`

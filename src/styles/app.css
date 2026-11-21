@@ -934,6 +934,25 @@ dialog::backdrop { background: var(--color-overlay); }
 .history-filters .field-label { flex: 1 1 130px; min-width: 0; }
 .history-search { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-sm); margin-bottom: var(--space-lg); }
 .history-search .field-label { flex: 1 1 220px; max-width: 440px; margin: 0; }
+.analytics-filters { margin-bottom: var(--space-lg); }
+.workspace-analytics .analytics-register { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.analytics-legend { display: flex; flex-wrap: wrap; gap: var(--space-md); margin-bottom: var(--space-md); color: var(--color-muted); font-size: var(--text-label); }
+.analytics-legend span::before { content: ''; display: inline-block; width: .7em; height: .7em; margin-right: .5em; background: var(--color-muted); }
+.analytics-legend span + span::before { background: var(--color-accent); }
+.analytics-chart-scroll { overflow-x: auto; }
+.analytics-chart { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(76px, 1fr); gap: var(--space-xs); list-style: none; padding: 0; margin: 0; text-align: center; }
+.analytics-chart li > div { display: flex; height: 116px; align-items: end; justify-content: center; gap: 3px; border-bottom: 1px solid var(--color-rule); }
+.analytics-chart i { width: 16px; background: var(--color-muted); }
+.analytics-chart i + i { background: var(--color-accent); }
+.analytics-chart small { display: block; margin-top: var(--space-xs); color: var(--color-muted); white-space: nowrap; }
+.analytics-latency { width: 100%; border-collapse: collapse; margin-bottom: var(--space-sm); font-size: var(--text-label); }
+.analytics-latency th, .analytics-latency td { padding: var(--space-sm) 0; text-align: start; border-bottom: 1px solid var(--color-rule); }
+.analytics-latency td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.analytics-intents { margin-top: var(--space-xl); }
+@media (max-width: 760px) {
+  .workspace-analytics .analytics-register { grid-template-columns: minmax(0, 1fr); }
+  .workspace-analytics .analytics-register > div { flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); }
+}
 .history-export-ready { margin-top: var(--space-md); }
 .history-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--space-sm); }
 .history-deletion > p { max-width: 240px; margin-top: var(--space-xs); }
