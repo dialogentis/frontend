@@ -751,6 +751,10 @@ dialog::backdrop { background: var(--color-overlay); }
 .import-report { margin-top: var(--space-md); padding-top: var(--space-sm); border-top: 1px solid var(--color-rule); font-size: var(--text-data); }
 .import-report p { margin-block: var(--space-xs); }
 .draft-toolbar { padding-block: var(--space-md); }
+.draft-flow-navigation, .draft-flow-history { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); }
+.draft-flow-navigation { margin-bottom: var(--space-md); }
+.draft-node-picker { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; margin-right: auto; }
+.draft-node-picker select { min-width: 160px; }
 .flow-validation { padding-bottom: var(--space-md); }
 .flow-validation-result { margin-top: var(--space-md); padding: var(--space-md); border: 1px solid var(--color-rule); }
 .flow-validation-result h3 { margin: var(--space-md) 0 var(--space-xs); font-size: var(--text-data); }
@@ -771,6 +775,8 @@ dialog::backdrop { background: var(--color-overlay); }
 .draft-canvas .react-flow__edge-text { fill: var(--color-ink); }
 .draft-canvas .react-flow__edge-textbg { fill: var(--color-paper); }
 .draft-canvas .react-flow__controls-button { background: var(--color-paper-2); color: var(--color-ink); border-color: var(--color-rule); fill: currentColor; }
+.draft-canvas .react-flow__minimap { background: var(--color-plate); border: 1px solid var(--color-rule); border-radius: var(--radius-card); }
+.draft-canvas .react-flow__minimap-mask { opacity: .65; }
 .draft-inspector { padding: var(--space-lg); border-left: 1px solid var(--color-rule); overflow: auto; overflow-wrap: anywhere; }
 .draft-inspector h2 { margin-bottom: var(--space-md); font-size: 18px; }
 .draft-inspector .field-label { margin-top: var(--space-lg); }

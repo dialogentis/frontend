@@ -23,10 +23,10 @@ Vite доступен на http://127.0.0.1:5178, запросы `/api` напр
 npm run typecheck
 npm run test:unit
 npm run build
-npm run api:generate
+npm run api:generate -- --check
 ```
 
-Типы клиента генерируются из `../backend/openapi.json`. Браузерная проверка использует отдельный Chrome/Chromium и Mailpit. Из каталога backend можно поднять изолированный стенд:
+Типы клиента генерируются из `../backend/openapi.json`. После изменения контракта выполните `npm run api:generate`. Совместная проверка сервера, клиента и браузерных сценариев запускается из backend командой `CHROME_PATH=/absolute/path/to/chromium make acceptance`. Для отдельной браузерной проверки можно поднять изолированный стенд:
 
 ```sh
 PUBLIC_BASE_URL=http://localhost:18180 docker compose -p dialogentis-browser -f compose.yaml -f compose.browser-test.yaml --profile dev up --build -d frontend mailer mailpit dispatcher worker training-worker maintenance-worker scheduler runtime-watchdog

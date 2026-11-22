@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { FlaskConical } from 'lucide-react'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
+import { ExportPanel } from './ExportPanel'
 import { TestChat } from './TestChat'
 import { ReleasePanel } from './ReleasePanel'
 
@@ -97,7 +98,12 @@ export function TrainingPanel({ orgId, agentId, agent, userId, role, revision, e
     <details className="training-settings"><summary>Предупреждения о качестве</summary><p className="field-help">Если F1 на тестовых данных ниже заданного значения, в отчёте появится предупреждение. Метрики при этом не меняются.</p><div className="training-settings-grid">{([{ key: 'intent_f1', label: 'F1 намерений' }, { key: 'entity_f1', label: 'F1 сущностей' }] as const).map(item => <label key={item.key} className="training-setting"><span>{item.label} <strong>{percent(quality[item.key])}</strong></span><input type="range" min="0" max="1" step="0.01" value={quality[item.key]} disabled={!editable} onChange={event => onQualityChange({ ...quality, [item.key]: Number(event.target.value) })}/></label>)}</div>{editable && <button type="button" className="button button-quiet" onClick={() => onQualityChange(defaultQualitySettings)}>Вернуть начальные значения</button>}</details>
     {versions.isPending ? <p role="status">Загрузка версий…</p> : versions.isError ? <div className="data-state"><h3>Не удалось загрузить версии</h3><button type="button" className="button button-quiet" onClick={() => void versions.refetch()}>Повторить</button></div> : !items.length ? <div className="data-state"><h3>Версий пока нет</h3><p>Добавьте намерения и примеры, затем обучите агента.</p></div> : <div className="training-workspace">
       <div className="training-version-list" aria-label="Версии агента">{items.map(item => <button type="button" key={item.id} aria-pressed={selected?.id === item.id} onClick={() => setSelectedId(item.id)}><strong>Версия {item.number}</strong><span>{labels[item.status]} · черновик {item.source_revision}</span><small>{date(item.created_at)}</small></button>)}{versions.hasNextPage && <button type="button" disabled={versions.isFetchingNextPage} onClick={() => void versions.fetchNextPage()}>Показать ещё</button>}</div>
-      {selected && <div className="training-detail"><div className="section-heading"><div><h3>Версия {selected.number}</h3><p>{labels[selected.status]} · черновик {selected.source_revision} · {date(selected.created_at)}</p></div>{selected.status === 'building' && canCancel && <button type="button" className="button button-quiet" disabled={busy || selected.cancel_requested} onClick={() => void cancel(selected)}>{selected.cancel_requested ? 'Отмена…' : 'Отменить'}</button>}</div>
+      {selected && <div className="training-detail"><div className="section-heading"><div><h3>Версия {selected.number}</h3><p>{labels[selected.status]} · черновик {selected.source_revision} · {date(selected.created_at)}</p></div>
+        {canManage && <div className="draft-actions">
+          <ExportPanel key={selected.id} orgId={orgId} agentId={agentId} version={selected} enabled/>
+          {selected.status === 'building' && canCancel && <button type="button" className="button button-quiet" disabled={busy || selected.cancel_requested} onClick={() => void cancel(selected)}>{selected.cancel_requested ? 'Отмена…' : 'Отменить'}</button>}
+        </div>}
+      </div>
         {selected.status === 'building' && <p role="status">{selected.cancel_requested ? 'Останавливаем обучение…' : selected.job_status === 'queued' ? 'Ожидает очереди' : selected.stage ? stages[selected.stage] : 'Подготовка к обучению…'}</p>}
         {selected.status === 'failed' && <p role="alert" className="auth-error">{failures[selected.error_code || ''] || 'Не удалось подготовить версию. Проверьте данные и повторите попытку.'}</p>}
         {selected.status === 'cancelled' && <p>Обучение отменено.</p>}

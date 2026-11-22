@@ -16,9 +16,13 @@ const page = await browser.newPage()
 await page.evaluateOnNewDocument(() => {
   const originalFetch = window.fetch.bind(window)
   window.fetch = async (input, init) => {
-    const response = await originalFetch(input, init)
     const url = input instanceof Request ? input.url : String(input)
-    const method = input instanceof Request ? input.method : init?.method
+    const method = input instanceof Request ? input.method : init?.method ?? 'GET'
+    if (method === 'GET' && /\/api\/v1\/organizations\/[^/]+\/agents$/.test(new URL(url, location.href).pathname)
+      && sessionStorage.getItem('smoke-agent-list-unavailable')) {
+      return Response.json({ error: { code: 'unavailable', message: 'Сервис временно недоступен' } }, { status: 503 })
+    }
+    const response = await originalFetch(input, init)
     if (window.__dropDraftResponse && method === 'PUT' && url.includes('/draft')) {
       window.__dropDraftResponse = false
       throw new TypeError('Simulated lost response')
@@ -113,6 +117,16 @@ try {
   await page.waitForFunction(() => location.pathname.startsWith('/app/o/'))
   await contains('Рабочая команда')
   const orgId = await page.evaluate(() => location.pathname.split('/').at(-1))
+  if (process.env.GRAPH_ONLY) {
+    await contains('Здесь пока нет агентов')
+    await page.evaluate(() => sessionStorage.setItem('smoke-agent-list-unavailable', 'true'))
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await contains('Не удалось загрузить агентов')
+    await page.evaluate(() => sessionStorage.removeItem('smoke-agent-list-unavailable'))
+    await click('Повторить')
+    await contains('Здесь пока нет агентов')
+    console.log('PASS: the empty agent list recovers from a temporary loading error')
+  }
   await click('Создать агента')
   await page.type('[name="agent_name"]', 'Помощник')
   await page.type('[name="agent_slug"]', 'assistant')
@@ -143,6 +157,12 @@ try {
     await page.keyboard.press('Enter')
     await page.waitForSelector(`${sidebarToggle}[aria-expanded="true"]`)
     assert.equal(await page.$eval('#workspace-sidebar', element => getComputedStyle(element).visibility), 'visible')
+    await page.focus('[aria-label="Включить тёмную тему"]')
+    await page.keyboard.press('Enter')
+    await page.waitForSelector('html[data-mode="dark"]')
+    await page.focus('[aria-label="Включить светлую тему"]')
+    await page.keyboard.press('Enter')
+    await page.waitForSelector('html[data-mode="light"]')
     await verifyLargeGraph(page, click)
     assert.deepEqual(errors, [])
     console.log('PASS: keyboard collapses and expands the workspace sidebar and the preference survives reloading')
@@ -422,6 +442,20 @@ try {
   await page.waitForFunction(count => document.querySelectorAll('.test-chat-message-agent').length > count, {}, initialChatMessages.length)
   assert.equal(await page.$$eval('.test-chat-message-user', messages => messages.length), 1)
   if (process.env.RELEASE_ONLY) {
+    const exportMenu = '.training-detail .export-menu > summary'
+    await page.click(exportMenu)
+    await page.click('.training-detail .export-popover button.button-primary')
+    const snapshotDownload = await page.waitForSelector('.training-detail .export-status a')
+    assert.ok(snapshotDownload)
+    const exportedSnapshot = await snapshotDownload.evaluate(async link => {
+      const response = await fetch(link.href)
+      return { status: response.status, file: await response.json() }
+    })
+    assert.equal(exportedSnapshot.status, 200)
+    assert.equal(exportedSnapshot.file.schema_version, 1)
+    assert.equal(exportedSnapshot.file.config.examples.length, 20)
+    await page.click(exportMenu)
+    console.log('PASS: selected version exports its frozen configuration through the real worker')
     await click('Проверить публикацию')
     await contains('Подтверждаю предупреждения о качестве')
     await page.click('.release-form input[type="checkbox"]')

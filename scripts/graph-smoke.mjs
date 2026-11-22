@@ -60,10 +60,23 @@ export async function verifyLargeGraph(page, click) {
   })
   await page.reload({ waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => document.querySelectorAll('.react-flow__node').length === 300
-    && document.querySelectorAll('.react-flow__edge').length === 600)
+    && document.querySelectorAll('.react-flow__edge').length === 600
+    && document.querySelectorAll('.react-flow__minimap-node').length === 300)
   const opened = await page.evaluate(() => new Promise(resolve =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve(performance.now())))))
+  if (opened > 3000) {
+    console.error('Graph timing', await page.evaluate(() => ({
+      document: performance.getEntriesByType('navigation').map(entry => ({
+        responseStart: Math.round(entry.responseStart), domContentLoaded: Math.round(entry.domContentLoadedEventEnd),
+      })),
+      slowRequests: performance.getEntriesByType('resource').filter(entry => entry.duration > 500).map(entry => ({
+        type: entry.initiatorType, start: Math.round(entry.startTime), duration: Math.round(entry.duration),
+      })),
+      longTasks: window.__graphTasks.map(task => ({ start: Math.round(task.start), duration: Math.round(task.duration) })),
+    })))
+  }
   assert.ok(opened <= 3000, `Large graph opened in ${Math.round(opened)} ms`)
+  assert.equal(await page.$eval('.react-flow__minimap title', title => title.textContent), 'Миникарта сценария')
 
   await click('Начать редактирование')
   await page.waitForSelector('.react-flow__node.draggable')
@@ -93,14 +106,32 @@ export async function verifyLargeGraph(page, click) {
   await page.mouse.move(visible.x + 45, visible.y + 18, { steps: 12 })
   await page.mouse.up()
   const position = graph.flow.nodes.find(node => node.id === visible.id).position
-  await page.waitForFunction(async ({ api, id, position }) => {
+  const moved = await page.waitForFunction(async ({ api, id, position }) => {
     const draft = await (await fetch(api + '/draft')).json()
     const current = draft.config.flow.nodes.find(node => node.id === id)?.position
-    return current && (current.x !== position.x || current.y !== position.y)
+    return current && (current.x !== position.x || current.y !== position.y) ? current : false
   }, { polling: 350 }, { api, id: visible.id, position })
+  const movedPosition = await moved.jsonValue()
+  await moved.dispose()
   const longest = await page.evaluate(start =>
     Math.max(0, ...window.__graphTasks.filter(task => task.start >= start).map(task => task.duration)),
   interactiveStart)
   assert.ok(longest <= 200, `Interaction blocked the main thread for ${longest} ms`)
   console.log(`PASS: 300 nodes and 600 links, opened in ${Math.round(opened)} ms, zoom and persisted drag, longest interaction task ${longest} ms`)
+
+  await page.select('.draft-node-picker select', visible.id)
+  await page.waitForFunction(id => document.querySelector('.draft-inspector p')?.textContent === id, {}, visible.id)
+  const waitForPosition = expected => page.waitForFunction(async ({ api, id, expected }) => {
+    const draft = await (await fetch(api + '/draft')).json()
+    const current = draft.config.flow.nodes.find(node => node.id === id)?.position
+    return current?.x === expected.x && current?.y === expected.y
+  }, { polling: 350 }, { api, id: visible.id, expected })
+  await page.focus('.draft-flow-history button:not([disabled])')
+  await page.keyboard.down('Control')
+  await page.keyboard.press('z')
+  await page.keyboard.up('Control')
+  await waitForPosition(position)
+  await click('Повторить изменение')
+  await waitForPosition(movedPosition)
+  console.log('PASS: minimap, node list, keyboard undo and redo all work on the full graph')
 }

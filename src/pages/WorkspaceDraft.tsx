@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { Link, useBlocker } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Background, Controls, Position, ReactFlow, useNodesState } from '@xyflow/react'
-import type { Connection, Node, OnNodeDrag } from '@xyflow/react'
+import { Background, Controls, MiniMap, Position, ReactFlow, useNodesInitialized, useNodesState } from '@xyflow/react'
+import type { Connection, Node, OnDelete, OnNodeDrag } from '@xyflow/react'
 import { api, ApiError, check, getCsrf } from '../api'
 import type { components } from '../api/schema'
 import { withoutSecrets } from '../sanitize'
@@ -15,6 +16,8 @@ import { TrainingPanel, defaultNluSettings, defaultQualitySettings } from './Tra
 import { AgentApiKeys } from './AgentApiKeys'
 import { WidgetChannels } from './WidgetChannels'
 import { FlowValidation } from './FlowValidation'
+import { FlowHistory } from './FlowHistory'
+import type { HistoryDirection } from './FlowHistory'
 import { SwitchNode } from './SwitchNode'
 import { SwitchInspector } from './SwitchInspector'
 import { SlotPanel } from './SlotPanel'
@@ -41,6 +44,13 @@ const names: Record<FlowNode['type'], string> = { start: 'Начало', switch_
 const credential = (lease: Grant) => ({ 'X-Edit-Lease': lease.lease_token, 'X-Edit-Fence': lease.fencing_counter })
 const canonical = (value: unknown): string => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item) ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item)
 const nodeTypes = { intentSwitch: SwitchNode, askSlot: AskNode, setSlot: SetSlotNode, condition: ConditionNode, httpAction: HttpActionNode, handoff: HandoffNode }
+const multipleHandles = new Set<FlowNode['type']>(['switch_intent', 'ask_slot', 'set_slot', 'condition', 'http_action', 'handoff'])
+const edgeLabels: Record<string, string> = { next: 'Далее', fallback: 'Не распознано', success: 'Успешно', error: 'Ошибка', returned: 'Возврат', else: 'Иначе' }
+
+function ScenarioOverview() {
+  const initialized = useNodesInitialized()
+  return initialized ? <MiniMap ariaLabel="Миникарта сценария" pannable zoomable nodeColor="var(--color-muted)" maskColor="var(--color-paper-3)"/> : null
+}
 
 export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: { orgId: string; agentId: string; userId: string; role: Role; onDirtyChange: (dirty: boolean) => void }) {
   const path = { org_id: orgId, agent_id: agentId }
@@ -56,6 +66,22 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
   const [narrow, setNarrow] = useState(() => window.innerWidth <= 960)
   const [changes, setChanges] = useState(0)
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
+  const flowNodes = draft?.config.flow.nodes
+  const flowEdges = draft?.config.flow.edges
+  const edges = useMemo(() => {
+    if (!flowNodes || !flowEdges) return []
+    const handles = new Set(flowNodes.filter(node => multipleHandles.has(node.type)).map(node => node.id))
+    return flowEdges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: handles.has(edge.source) ? edge.source_handle : undefined,
+      label: handles.has(edge.source) ? '' : edgeLabels[edge.source_handle] || '',
+    }))
+  }, [flowNodes, flowEdges])
+  const nodeOptions = useMemo(() => flowNodes?.map((node, index) => (
+    <option key={node.id} value={node.id}>{names[node.type]} {index + 1}</option>
+  )), [flowNodes])
   const draftRef = useRef<Draft | null>(null)
   const leaseRef = useRef<Grant | null>(null)
   const changesRef = useRef(0)
@@ -63,6 +89,7 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
   const importingRef = useRef(false)
   const mounted = useRef(false)
   const inspectorRef = useRef<HTMLElement | null>(null)
+  const flowHistory = useRef(new FlowHistory())
   const uncertain = useRef<{ config: Config; revision: number; generation: number } | null>(null)
   const dirty = state !== 'saved' || importing
   useEffect(() => { onDirtyChange(dirty); return () => onDirtyChange(false) }, [dirty, onDirtyChange])
@@ -88,7 +115,7 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
       if (current) void api.DELETE('/api/v1/organizations/{org_id}/agents/{agent_id}/edit-lease', { params: { path: { org_id: orgId, agent_id: agentId }, header: credential(current) } })
     }
   }, [orgId, agentId])
-  const lose = useCallback((message: string) => { leaseRef.current = null; setLease(null); setState(previous => previous === 'saved' ? 'saved' : 'lost'); setError(message) }, [])
+  const lose = useCallback((message: string) => { leaseRef.current = null; flowHistory.current.clear(); setLease(null); setState(previous => previous === 'saved' ? 'saved' : 'lost'); setError(message) }, [])
   useEffect(() => {
     if (!lease) return
     let renewing = false
@@ -107,9 +134,19 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
     return () => window.clearInterval(timer)
   }, [lease?.lease_token, orgId, agentId, lose])
   const edit = (mutate: (config: Config) => Config) => {
-    if (!draftRef.current || !leaseRef.current || narrow || importingRef.current) return
-    const config = mutate(draftRef.current.config)
-    if (config === draftRef.current.config) return
+    if (!draftRef.current || !leaseRef.current || narrow || importingRef.current || state === 'conflict') return
+    const previous = draftRef.current.config
+    const config = mutate(previous)
+    if (config === previous) return
+    if (config.slots !== previous.slots || config.intents !== previous.intents || config.entities !== previous.entities) {
+      flowHistory.current.clear()
+    } else if (config.flow !== previous.flow) {
+      flowHistory.current.record(previous.flow)
+    }
+    applyConfig(config)
+  }
+  const applyConfig = (config: Config) => {
+    if (!draftRef.current) return
     const next = { ...draftRef.current, config }
     draftRef.current = next; changesRef.current += 1; setChanges(changesRef.current); setDraft(next); setState(previous => previous === 'saving' || (previous === 'offline' && uncertain.current) ? previous : 'dirty'); if (!uncertain.current) setError('')
   }
@@ -145,6 +182,7 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
       const fresh = await api.GET('/api/v1/organizations/{org_id}/agents/{agent_id}/draft', { params: { path } }); check(fresh.response, fresh.error)
       if (!fresh.data) throw new Error('Некорректный ответ сервера')
       cache.setQueryData(['draft', orgId, agentId], fresh.data)
+      flowHistory.current.clear()
       draftRef.current = fresh.data; setDraft(fresh.data); setLease(grant); setState('saved')
     } catch (e) {
       const current = leaseRef.current
@@ -180,9 +218,42 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
   const intents = draft.config.intents as unknown as Intent[]
   const managesChannels = role === 'owner' || role === 'admin'
   const editable = !!lease && !narrow && !importing && !['lost', 'conflict'].includes(state)
-  const edgeLabels: Record<string, string> = { next: 'Далее', fallback: 'Не распознано', success: 'Успешно', error: 'Ошибка', returned: 'Возврат', else: 'Иначе' }
-  const edges = draft.config.flow.edges.map(edge => { const multiOutput = ['switch_intent', 'ask_slot', 'set_slot', 'condition', 'http_action', 'handoff'].includes(draft.config.flow.nodes.find(node => node.id === edge.source)?.type || ''); return { id: edge.id, source: edge.source, target: edge.target, sourceHandle: multiOutput ? edge.source_handle : undefined, label: multiOutput ? '' : edgeLabels[edge.source_handle] || '' } })
-  const onDragStop: OnNodeDrag = (_, node) => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(item => item.id === node.id ? { ...item, position: node.position } : item) } }))
+  const restoreFlow = (direction: HistoryDirection) => {
+    const config = draftRef.current?.config
+    const currentLease = leaseRef.current
+    if (!editable || !config || !currentLease || Date.now() >= Date.parse(currentLease.expires_at)) return
+    const flow = flowHistory.current.restore(direction, config.flow)
+    if (flow) applyConfig({ ...config, flow })
+  }
+  const handleHistoryKeys = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!editable || event.defaultPrevented || event.altKey || !(event.ctrlKey || event.metaKey)) return
+    const target = event.target as HTMLElement
+    if (target.closest('input, textarea, select, [contenteditable]')) return
+    const key = event.key.toLowerCase()
+    if (key !== 'z' && key !== 'y') return
+    event.preventDefault()
+    restoreFlow(key === 'y' || event.shiftKey ? 'redo' : 'undo')
+  }
+  const selectNode = (id: string | null) => {
+    setSelected(id)
+    setNodes(items => items.map(item => ({ ...item, selected: item.id === id })))
+  }
+  const onDragStop: OnNodeDrag = (_, _node, dragged) => {
+    const positions = new Map(dragged.map(node => [node.id, node.position]))
+    edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => {
+      const position = positions.get(node.id)
+      return position ? { ...node, position } : node
+    }) } }))
+  }
+  const onDelete: OnDelete = ({ nodes: removedNodes, edges: removedEdges }) => {
+    const removed = new Set(removedNodes.map(node => node.id))
+    const edges = new Set(removedEdges.map(edge => edge.id))
+    edit(config => ({ ...config, flow: {
+      ...config.flow,
+      nodes: config.flow.nodes.filter(node => !removed.has(node.id)),
+      edges: config.flow.edges.filter(edge => !edges.has(edge.id) && !removed.has(edge.source) && !removed.has(edge.target)),
+    } }))
+  }
   const connect = (connection: Connection) => { if (!connection.source || !connection.target) return; edit(config => { const source = config.flow.nodes.find(node => node.id === connection.source); const target = config.flow.nodes.find(node => node.id === connection.target); const handle = source?.type === 'switch_intent' || source?.type === 'ask_slot' || source?.type === 'set_slot' || source?.type === 'condition' || source?.type === 'http_action' || source?.type === 'handoff' ? connection.sourceHandle : 'next'; const validIntent = (config.intents as unknown as Intent[]).some(intent => intent.id === handle && intent.enabled !== false); if (!source || !target || !handle || target.type === 'start' || !['start', 'say', 'switch_intent', 'ask_slot', 'set_slot', 'condition', 'http_action', 'handoff'].includes(source.type) || (source.type === 'switch_intent' && handle !== 'fallback' && !validIntent) || (source.type === 'ask_slot' && !['success', 'invalid', 'exhausted'].includes(handle)) || (source.type === 'set_slot' && !['next', 'error'].includes(handle)) || (source.type === 'http_action' && !httpOutputs.some(output => output.id === handle)) || (source.type === 'handoff' && !handoffOutputs(source.config.mode).some(output => output.id === handle)) || (source.type === 'condition' && handle !== 'else' && !conditionBranches(source.config.branches).some(branch => branch.id === handle)) || config.flow.edges.length >= 600 || config.flow.edges.some(edge => edge.source === source.id && edge.source_handle === handle)) return config; return { ...config, flow: { ...config.flow, edges: [...config.flow.edges, { id: crypto.randomUUID(), source: connection.source!, target: connection.target!, source_handle: handle }] } } }) }
   const setBranch = (sourceId: string, handle: string, targetId: string) => edit(config => {
     const old = config.flow.edges.find(edge => edge.source === sourceId && edge.source_handle === handle)
@@ -206,8 +277,24 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
     {section === 'channels' ? managesChannels && <div className="agent-channels" key={agentId}>
       <WidgetChannels orgId={orgId} agentId={agentId} archived={agent.data?.status === 'archived'} published={!!agent.data?.current_release_id}/>
       <AgentApiKeys orgId={orgId} agentId={agentId} archived={agent.data?.status === 'archived'}/>
-    </div> : section === 'training' ? <TrainingPanel orgId={orgId} agentId={agentId} agent={agent.data} userId={userId} role={role} revision={draft.revision} enabled={state === 'saved' && !importing} archived={agent.data?.status === 'archived'} settings={draft.config.nlu_settings || defaultNluSettings} quality={draft.config.quality_settings || defaultQualitySettings} editable={editable} onSettingsChange={settings => edit(config => ({ ...config, nlu_settings: settings }))} onQualityChange={settings => edit(config => ({ ...config, quality_settings: settings }))}/> : section === 'intents' ? <IntentPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/> : section === 'entities' ? <EntityPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} previewEnabled={role !== 'viewer' && state === 'saved'} update={edit}/> : section === 'slots' ? <SlotPanel key={lease?.lease_token || 'readonly'} draft={draft} editable={editable} update={edit}/> : section === 'examples' ? <>{role !== 'viewer' && <ImportPanel key={`${orgId}:${agentId}`} orgId={orgId} agentId={agentId} revision={draft.revision} lease={narrow ? null : lease} enabled={state === 'saved' && !importing} onApplying={value => { importingRef.current = value; setImporting(value) }} onImported={value => { draftRef.current = value; setDraft(value); setState('saved'); uncertain.current = null; cache.setQueryData(['draft', orgId, agentId], value); void cache.invalidateQueries({ queryKey: ['dataset', orgId, agentId] }) }} onUncertain={() => { setState('conflict'); setError('Применение импорта не подтверждено. Сохраните локальную копию и обновите страницу.') }}/>}<ExamplePanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/></> : <><div className="draft-toolbar">{editable && <><button className="button button-quiet" onClick={() => add('say')}>Добавить ответ</button><button className="button button-quiet" onClick={() => add('end')}>Добавить завершение</button><button className="button button-quiet" onClick={() => add('ask_slot')}>Добавить сбор параметра</button><button className="button button-quiet" onClick={() => add('set_slot')}>Добавить присваивание</button><button className="button button-quiet" onClick={() => add('condition')}>Добавить условие</button><button className="button button-quiet" onClick={() => add('http_action')}>Добавить HTTP-запрос</button><button className="button button-quiet" onClick={() => add('handoff')}>Другой агент</button><button className="button button-quiet" onClick={() => add('return')}>Возврат</button></>}<span className="field-help">Выберите блок на схеме.</span></div>
-    <FlowValidation orgId={orgId} agentId={agentId} revision={draft.revision} enabled={state === 'saved' && !importing} flow={draft.config.flow} names={names} onSlots={() => setSection('slots')} onSelect={id => { setSelected(id); setNodes(items => items.map(item => ({ ...item, selected: item.id === id }))); inspectorRef.current?.focus() }}/>
-    <div className="draft-editor"><div className="draft-canvas"><ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} nodesDraggable={editable} nodesConnectable={editable} elementsSelectable deleteKeyCode={editable ? ['Backspace', 'Delete'] : null} onNodesChange={onNodesChange} onNodeClick={(_, node) => setSelected(node.id)} onNodeDragStop={onDragStop} onConnect={connect} onBeforeDelete={async ({ nodes: removed }) => !removed.some(node => draft.config.flow.nodes.some(item => item.id === node.id && item.type === 'start'))} onNodesDelete={removed => edit(config => { const ids = new Set(removed.map(node => node.id)); return { ...config, flow: { ...config.flow, nodes: config.flow.nodes.filter(node => !ids.has(node.id)), edges: config.flow.edges.filter(edge => !ids.has(edge.source) && !ids.has(edge.target)) } } })} onEdgesDelete={removed => edit(config => { const ids = new Set(removed.map(edge => edge.id)); return { ...config, flow: { ...config.flow, edges: config.flow.edges.filter(edge => !ids.has(edge.id)) } } })} fitView><Background/><Controls/></ReactFlow></div><aside ref={inspectorRef} tabIndex={-1} aria-label="Настройки блока" className="draft-inspector">{current ? <><h2>{names[current.type]}</h2><p className="field-help">{current.id}</p>{current.type === 'switch_intent' && <SwitchInspector node={current} flow={draft.config.flow} intents={intents} names={names} editable={editable} onChange={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'ask_slot' && <AskInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} entities={draft.config.entities as unknown as components['schemas']['Entity'][]} names={names} editable={editable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'set_slot' && <SetSlotInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'http_action' && <HttpActionInspector key={current.id} orgId={orgId} node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'handoff' && <HandoffInspector key={current.id} orgId={orgId} agentId={agentId} node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onConfig={patch => updateHandoff(current.id, patch)} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'return' && <ReturnInspector node={current} slots={draft.config.slots as unknown as SlotSummary[]} editable={editable} onConfig={patch => updateHandoff(current.id, patch)}/>} {current.type === 'condition' && <ConditionInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onBranches={branches => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, branches } } : node), edges: config.flow.edges.filter(edge => edge.source !== current.id || edge.source_handle === 'else' || branches.some(branch => branch.id === edge.source_handle)) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {['say', 'fallback', 'end'].includes(current.type) && <label className="field-label">{current.type === 'end' ? 'Текст завершения' : 'Текст ответа'}<textarea name="draft_node_text" rows={5} maxLength={4000} disabled={!editable} value={typeof current.config.text === 'string' ? current.config.text : ''} onChange={event => { const text = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, text } } : node) } })) }}/><span className="field-help">Параметр в тексте: <code>{'{{client_name}}'}</code>.</span></label>}{current.type === 'fallback' && <label className="field-label">Пример допустимого запроса<input name="fallback_example" maxLength={500} disabled={!editable} value={typeof current.config.example === 'string' ? current.config.example : ''} onChange={event => { const example = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, example } } : node) } })) }}/><span className="field-help">Агент предложит пример после нескольких неудачных попыток.</span></label>}</> : <p className="muted">Выберите блок на схеме.</p>}</aside></div></>}
+    </div> : section === 'training' ? <TrainingPanel orgId={orgId} agentId={agentId} agent={agent.data} userId={userId} role={role} revision={draft.revision} enabled={state === 'saved' && !importing} archived={agent.data?.status === 'archived'} settings={draft.config.nlu_settings || defaultNluSettings} quality={draft.config.quality_settings || defaultQualitySettings} editable={editable} onSettingsChange={settings => edit(config => ({ ...config, nlu_settings: settings }))} onQualityChange={settings => edit(config => ({ ...config, quality_settings: settings }))}/> : section === 'intents' ? <IntentPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/> : section === 'entities' ? <EntityPanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} previewEnabled={role !== 'viewer' && state === 'saved'} update={edit}/> : section === 'slots' ? <SlotPanel key={lease?.lease_token || 'readonly'} draft={draft} editable={editable} update={edit}/> : section === 'examples' ? <>{role !== 'viewer' && <ImportPanel key={`${orgId}:${agentId}`} orgId={orgId} agentId={agentId} revision={draft.revision} lease={narrow ? null : lease} enabled={state === 'saved' && !importing} onApplying={value => { importingRef.current = value; setImporting(value) }} onImported={value => { flowHistory.current.clear(); draftRef.current = value; setDraft(value); setState('saved'); uncertain.current = null; cache.setQueryData(['draft', orgId, agentId], value); void cache.invalidateQueries({ queryKey: ['dataset', orgId, agentId] }) }} onUncertain={() => { setState('conflict'); setError('Применение импорта не подтверждено. Сохраните локальную копию и обновите страницу.') }}/>}<ExamplePanel key={lease?.lease_token || 'readonly'} orgId={orgId} agentId={agentId} draft={draft} editable={editable} update={edit}/></> : <div onKeyDown={handleHistoryKeys}><div className="draft-toolbar">{editable && <><button className="button button-quiet" onClick={() => add('say')}>Добавить ответ</button><button className="button button-quiet" onClick={() => add('end')}>Добавить завершение</button><button className="button button-quiet" onClick={() => add('ask_slot')}>Добавить сбор параметра</button><button className="button button-quiet" onClick={() => add('set_slot')}>Добавить присваивание</button><button className="button button-quiet" onClick={() => add('condition')}>Добавить условие</button><button className="button button-quiet" onClick={() => add('http_action')}>Добавить HTTP-запрос</button><button className="button button-quiet" onClick={() => add('handoff')}>Другой агент</button><button className="button button-quiet" onClick={() => add('return')}>Возврат</button></>}</div>
+    <div className="draft-flow-navigation">
+      <label className="field-label draft-node-picker">Блок сценария
+        <select value={current?.id || ''} onChange={event => selectNode(event.target.value || null)}>
+          <option value="">Выберите блок</option>
+          {nodeOptions}
+        </select>
+      </label>
+      {editable && <div className="draft-flow-history" role="group" aria-label="История изменений сценария">
+        <button type="button" className="button button-quiet" disabled={!flowHistory.current.canUndo} onClick={() => restoreFlow('undo')}>Отменить изменение</button>
+        <button type="button" className="button button-quiet" disabled={!flowHistory.current.canRedo} onClick={() => restoreFlow('redo')}>Повторить изменение</button>
+      </div>}
+    </div>
+    <FlowValidation orgId={orgId} agentId={agentId} revision={draft.revision} enabled={state === 'saved' && !importing} flow={draft.config.flow} names={names} onSlots={() => setSection('slots')} onSelect={id => { selectNode(id); inspectorRef.current?.focus() }}/>
+    <div className="draft-editor"><div className="draft-canvas"><ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} nodesDraggable={editable} nodesConnectable={editable} elementsSelectable deleteKeyCode={editable ? ['Backspace', 'Delete'] : null} onNodesChange={onNodesChange} onNodeClick={(_, node) => setSelected(node.id)} onNodeDragStop={onDragStop} onConnect={connect} onBeforeDelete={async ({ nodes: removed }) => !removed.some(node => draft.config.flow.nodes.some(item => item.id === node.id && item.type === 'start'))} onDelete={onDelete} fitView>
+      <Background/>
+      <Controls/>
+      {!narrow && <ScenarioOverview/>}
+    </ReactFlow></div><aside ref={inspectorRef} tabIndex={-1} aria-label="Настройки блока" className="draft-inspector">{current ? <><h2>{names[current.type]}</h2><p className="field-help">{current.id}</p>{current.type === 'switch_intent' && <SwitchInspector node={current} flow={draft.config.flow} intents={intents} names={names} editable={editable} onChange={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'ask_slot' && <AskInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} entities={draft.config.entities as unknown as components['schemas']['Entity'][]} names={names} editable={editable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'set_slot' && <SetSlotInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'http_action' && <HttpActionInspector key={current.id} orgId={orgId} node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'handoff' && <HandoffInspector key={current.id} orgId={orgId} agentId={agentId} node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onConfig={patch => updateHandoff(current.id, patch)} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'return' && <ReturnInspector node={current} slots={draft.config.slots as unknown as SlotSummary[]} editable={editable} onConfig={patch => updateHandoff(current.id, patch)}/>} {current.type === 'condition' && <ConditionInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={editable} onBranches={branches => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, branches } } : node), edges: config.flow.edges.filter(edge => edge.source !== current.id || edge.source_handle === 'else' || branches.some(branch => branch.id === edge.source_handle)) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {['say', 'fallback', 'end'].includes(current.type) && <label className="field-label">{current.type === 'end' ? 'Текст завершения' : 'Текст ответа'}<textarea name="draft_node_text" rows={5} maxLength={4000} disabled={!editable} value={typeof current.config.text === 'string' ? current.config.text : ''} onChange={event => { const text = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, text } } : node) } })) }}/><span className="field-help">Параметр в тексте: <code>{'{{client_name}}'}</code>.</span></label>}{current.type === 'fallback' && <label className="field-label">Пример допустимого запроса<input name="fallback_example" maxLength={500} disabled={!editable} value={typeof current.config.example === 'string' ? current.config.example : ''} onChange={event => { const example = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, example } } : node) } })) }}/><span className="field-help">Агент предложит пример после нескольких неудачных попыток.</span></label>}</> : <p className="muted">Выберите блок на схеме.</p>}</aside></div></div>}
   </div>
 }
