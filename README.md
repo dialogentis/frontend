@@ -32,7 +32,7 @@ npm run api:generate
 PUBLIC_BASE_URL=http://localhost:18180 docker compose -p dialogentis-browser -f compose.yaml -f compose.browser-test.yaml --profile dev up --build -d frontend mailer mailpit dispatcher worker training-worker maintenance-worker scheduler runtime-watchdog
 ```
 
-Затем из frontend выполнить `CHROME_PATH=/absolute/path/to/chromium npm run test:smoke`. Для другого стенда адреса задаются `BASE_URL` и `MAILPIT_URL`. Тест регистрирует нового пользователя и создаёт пространство; используйте только тестовую среду. После проверки из backend удалите контейнеры и данные именно тестового проекта:
+Затем из frontend выполните `CHROME_PATH=/absolute/path/to/chromium npm run test:smoke`. Для проверки клавиатурного сворачивания панели и графа из 300 блоков и 600 связей добавьте `GRAPH_ONLY=1`. Режим `RELEASE_ONLY=1` проходит публикацию, виджет, внешний API и историю. Для другого стенда адреса задаются `BASE_URL` и `MAILPIT_URL`. Тесты регистрируют пользователей и создают пространства на тестовом стенде. После проверки выполните из backend:
 
 ```sh
 docker compose -p dialogentis-browser -f compose.yaml -f compose.browser-test.yaml --profile dev down -v

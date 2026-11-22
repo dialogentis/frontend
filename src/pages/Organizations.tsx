@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AudioLines, Boxes, LayoutDashboard, LogOut, MessageSquare, Moon, Network, Plus, Settings2, ShieldCheck, Sun, Users } from 'lucide-react'
+import { AudioLines, Boxes, LayoutDashboard, LogOut, MessageSquare, Moon, Network, PanelLeftClose, PanelLeftOpen, Plus, Settings2, ShieldCheck, Sun, Users } from 'lucide-react'
 import { api, check } from '../api'
 import { useSession } from '../Session'
 import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
@@ -54,6 +54,15 @@ export function OrganizationsPage() {
 
 export function WorkspacePage() {
   const { orgId, agentId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const location = useLocation(); const cache = useQueryClient(); const [error, setError] = useState(''); const [editorDirty, setEditorDirty] = useState(false); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('dialogentis-sidebar-collapsed') === 'true' } catch { return false }
+  })
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed
+    setSidebarCollapsed(next)
+    try { localStorage.setItem('dialogentis-sidebar-collapsed', String(next)) } catch { /* Preference stays in this tab. */ }
+  }
+  const sidebarLabel = sidebarCollapsed ? 'Развернуть боковую панель' : 'Свернуть боковую панель'
   if (orgs.isLoading) return <div className="auth-state" role="status">Загрузка пространства…</div>
   if (orgs.isError) return <div className="auth-state"><h1>Не удалось загрузить пространство</h1><button className="button button-quiet" onClick={() => orgs.refetch()}>Повторить</button></div>
   const current = orgs.data?.find(o => o.id === orgId)
@@ -80,7 +89,7 @@ export function WorkspacePage() {
     ...(canAudit ? [{ suffix: '/audit', label: 'Аудит', icon: ShieldCheck, active: auditPage }] : []),
     { suffix: '/settings', label: 'Настройки', icon: Settings2, active: settingsPage },
   ]
-  return <div className="app-shell"><aside className="sidebar workspace-real-sidebar">
+  return <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}><aside id="workspace-sidebar" className="sidebar workspace-real-sidebar">
     <Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link>
     <WorkspaceSwitcher value={current.id} organizations={options} onChange={id => { cache.removeQueries({ predicate: q => q.queryKey[0] !== 'session' && q.queryKey[0] !== 'organizations' }); navigate(`/app/o/${id}`) }}/>
     <nav className="primary-nav" aria-label="Основная навигация">
@@ -91,7 +100,11 @@ export function WorkspacePage() {
       <Link className="nav-link" to="/app/organizations">Все пространства</Link>
     </nav>
     <div className="sidebar-bottom"><div className="user-profile"><span className="user-avatar">Вы</span><span><strong>{session.user.email}</strong><small>{role}</small></span></div></div>
-  </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs"><Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><Link className="workspace-overview-link" to={`${root}/overview`} title="Обзор пространства">{current.name}</Link></div><div className="topbar-actions">
+  </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs">
+    <button type="button" className="button icon-button desktop-sidebar-toggle" aria-label={sidebarLabel} title={sidebarLabel} aria-controls="workspace-sidebar" aria-expanded={!sidebarCollapsed} onClick={toggleSidebar}>
+      {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true"/> : <PanelLeftClose size={18} aria-hidden="true"/>}
+    </button>
+    <Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><Link className="workspace-overview-link" to={`${root}/overview`} title="Обзор пространства">{current.name}</Link></div><div className="topbar-actions">
     <Link className="button button-text workspace-mobile-members" to={membersPage ? root : `${root}/members`}>{membersPage ? 'Агенты' : 'Участники'}</Link>
     <Link className="button icon-button workspace-mobile-members" aria-label="Настройки пространства" to={`${root}/settings`}><Settings2 size={18}/></Link>
     <Link className="button icon-button workspace-mobile-members" aria-label="Диалоги" to={`${root}/conversations`}><MessageSquare size={18}/></Link>

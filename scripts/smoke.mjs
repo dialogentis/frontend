@@ -4,6 +4,7 @@ import { writeFile, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import puppeteer from 'puppeteer-core'
+import { verifyLargeGraph } from './graph-smoke.mjs'
 import { verifyWidget } from './widget-smoke.mjs'
 
 const base = process.env.BASE_URL || 'http://localhost:18180'
@@ -129,6 +130,23 @@ try {
   await click('Консультант')
   await page.waitForFunction(() => location.pathname.includes('/agents/'))
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
+  if (process.env.GRAPH_ONLY) {
+    const sidebarToggle = '.topbar button[aria-controls="workspace-sidebar"]'
+    const expandedWidth = await page.$eval('.workspace-shell', element => element.clientWidth)
+    await page.focus(sidebarToggle)
+    await page.keyboard.press('Enter')
+    await page.waitForSelector(`${sidebarToggle}[aria-expanded="false"]`)
+    assert.ok(await page.$eval('.workspace-shell', (element, previous) => element.clientWidth > previous, expandedWidth))
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForSelector(`${sidebarToggle}[aria-expanded="false"]`)
+    await page.focus(sidebarToggle)
+    await page.keyboard.press('Enter')
+    await page.waitForSelector(`${sidebarToggle}[aria-expanded="true"]`)
+    assert.equal(await page.$eval('#workspace-sidebar', element => getComputedStyle(element).visibility), 'visible')
+    await verifyLargeGraph(page, click)
+    assert.deepEqual(errors, [])
+    console.log('PASS: keyboard collapses and expands the workspace sidebar and the preference survives reloading')
+  } else {
   await click('Каналы')
   await click('Добавить виджет')
   await page.type('[name="widget_name"]', 'Чат доставки')
@@ -165,6 +183,7 @@ try {
   await page.evaluate(() => { delete navigator.clipboard })
   await click('Закрыть')
   await page.waitForSelector('[name="issued_api_key"]', { hidden: true })
+  await page.waitForFunction(() => document.querySelector('.api-key-row')?.textContent.includes('Сайт магазина'))
   await click('Отозвать ключ')
   await click('Подтвердить отзыв')
   await page.waitForFunction(() => document.querySelector('.api-key-row')?.textContent.includes('Отозван'))
@@ -858,10 +877,14 @@ try {
   const secondOrgId = await page.evaluate(() => location.pathname.split('/').at(-1))
   await contains('Другая команда')
   await page.setViewport({ width: 1280, height: 800 })
-  await page.click('[aria-label="Рабочее пространство: Другая команда"]')
-  await page.waitForSelector('[role="option"]')
-  await page.$$eval('[role="option"]', options => options.find(option => option.textContent.includes('Рабочая команда')).click())
+  await page.focus('[aria-label="Рабочее пространство: Другая команда"]')
+  await page.keyboard.press('ArrowDown')
+  await page.waitForSelector('[role="option"]:focus')
+  await page.keyboard.press('ArrowDown')
+  await page.waitForFunction(() => document.activeElement?.textContent.includes('Рабочая команда'))
+  await page.keyboard.press('Enter')
   await page.waitForFunction(id => location.pathname === `/app/o/${id}`, {}, orgId)
+  await page.waitForSelector('[aria-label="Рабочее пространство: Рабочая команда"]')
   await page.click('[aria-label="Рабочее пространство: Рабочая команда"]')
   await page.waitForSelector('[role="option"]')
   await page.$$eval('[role="option"]', options => options.find(option => option.textContent.includes('Другая команда')).click())
@@ -878,9 +901,39 @@ try {
     await ownerPage.waitForFunction(() => document.body.innerText.includes('Пространство недоступно'))
     assert.equal(await ownerPage.evaluate(async id => (await fetch(`/api/v1/organizations/${id}`)).status, secondOrgId), 404)
     assert.equal(await page.evaluate(async id => (await fetch(`/api/v1/organizations/${id}`)).status, secondOrgId), 200)
+    const workspace = `${base}/app/o/${orgId}`
+    await page.goto(workspace, { waitUntil: 'networkidle0' })
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Создать агента'))
+    await page.goto(`${workspace}/members`, { waitUntil: 'networkidle0' })
+    await contains('Участники недоступны')
+
+    await ownerPage.goto(`${workspace}/members`, { waitUntil: 'networkidle0' })
+    const roleSelector = `select[aria-label="Роль ${guestEmail}"]`
+    await ownerPage.waitForSelector(roleSelector)
+    await ownerPage.waitForSelector('form.transfer-form')
+    const changeRole = async role => {
+      await Promise.all([
+        ownerPage.waitForResponse(response => response.request().method() === 'PATCH'
+          && response.url().includes(`/organizations/${orgId}/members/`) && response.ok()),
+        ownerPage.select(roleSelector, role),
+      ])
+      await ownerPage.waitForFunction((selector, role) => document.querySelector(selector)?.value === role, {}, roleSelector, role)
+    }
+    await changeRole('viewer')
+    await page.goto(workspace, { waitUntil: 'networkidle0' })
+    await contains('Консультант')
+    assert.ok(!(await page.evaluate(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Создать агента'))))
+    await click('Консультант')
+    await page.waitForSelector('.draft-canvas .react-flow__node')
+    assert.ok(!(await page.evaluate(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))))
+
+    await changeRole('admin')
+    await page.goto(`${workspace}/members`, { waitUntil: 'networkidle0' })
+    await page.waitForSelector('input[type="email"]')
+    assert.equal(await page.$('form.transfer-form'), null)
+    assert.ok(!(await page.evaluate(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Удалить пространство'))))
+    console.log('PASS: viewer can read, editor can create, admin can invite, and only owner can transfer ownership')
   } finally { await ownerContext.close() }
-  await page.goto(`${base}/app/o/${orgId}/members`, { waitUntil: 'networkidle0' })
-  await contains('Участники недоступны')
   await click('Выйти')
   await page.waitForFunction(() => location.pathname === '/login')
   await page.waitForSelector('[name="password"]')
@@ -890,8 +943,6 @@ try {
   await page.waitForFunction(() => location.pathname === '/app/organizations')
   await page.goto(`${base}/app/o/${orgId}/members`, { waitUntil: 'networkidle0' })
   await contains(guestEmail)
-  await page.select(`select[aria-label="Роль ${guestEmail}"]`, 'admin')
-  await contains('Роль изменена.')
   const guestId = await page.$eval('.transfer-form select', (select, value) => [...select.options].find(option => option.textContent === value)?.value, guestEmail)
   assert.ok(guestId)
   await page.select('.transfer-form select', guestId)
@@ -924,6 +975,7 @@ try {
   }
   assert.deepEqual(errors, [])
   console.log(process.env.CONDITION_ONLY ? 'PASS: condition editor, validation and copying' : 'PASS: auth, agents, organization isolation, invitations, roles, ownership transfer, leaving and deletion')
+  }
   }
 } catch (error) {
   try { console.error('Page:', await page.evaluate(() => `${location.pathname}\n${document.body.innerText}`)) } catch { console.error('Page unavailable') }

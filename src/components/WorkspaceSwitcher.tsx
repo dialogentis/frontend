@@ -1,27 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronsUpDown } from 'lucide-react'
-import { organizations as defaultOrganizations } from '../model'
-import type { Organization } from '../model'
 import './workspace-switcher.css'
 
-export function WorkspaceSwitcher({ value, onChange, disabled = false, organizations = defaultOrganizations }: { value: string; onChange: (id: string) => void; disabled?: boolean; organizations?: Organization[] }) {
+type Organization = { id: string; name: string; initials: string }
+
+export function WorkspaceSwitcher({ value, onChange, organizations }: { value: string; onChange: (id: string) => void; organizations: readonly Organization[] }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const options = useRef<(HTMLButtonElement | null)[]>([])
-  const current = organizations.find(o => o.id === value) ?? organizations[0]
+  const selected = organizations.findIndex(o => o.id === value)
+  const current = organizations[selected]
   const focusOption = (index: number) => options.current[(index + organizations.length) % organizations.length]?.focus()
   const close = () => { setOpen(false); trigger.current?.focus() }
   useEffect(() => {
-    if (!open) return
-    focusOption(organizations.findIndex(o => o.id === value))
+    if (!open || selected < 0) return
+    focusOption(selected)
     const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false) }
     document.addEventListener('pointerdown', outside)
     return () => document.removeEventListener('pointerdown', outside)
-  }, [open, value, organizations])
+  }, [open, selected, organizations.length])
+  if (!current) return null
   return <div className="workspace-switcher" ref={root} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }}>
     <input type="hidden" name="organization" value={value}/>
-    <button ref={trigger} disabled={disabled} type="button" className="workspace-trigger" aria-label={`Рабочее пространство: ${current.name}`} aria-haspopup="listbox" aria-expanded={open} aria-controls="workspace-options" onClick={() => setOpen(v => !v)} onKeyDown={event => {
+    <button ref={trigger} type="button" className="workspace-trigger" aria-label={`Рабочее пространство: ${current.name}`} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? 'workspace-options' : undefined} onClick={() => setOpen(v => !v)} onKeyDown={event => {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); if (open) focusOption(event.key === 'ArrowUp' ? organizations.length - 1 : 0); else setOpen(true) }
     }}>
       <span className="workspace-avatar" aria-hidden="true">{current.initials}</span>

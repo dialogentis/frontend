@@ -1,4 +1,4 @@
-/* Hallmark · shape: app screen · genre: modern-minimal · theme: Terrazzo (deal 1/3) · nav: workspace rail and agent tabs · signature: editable dialogue graph with live mock trace · states: full loading empty error · terrazzo: off-white · axes: light/geometric-sans/warm · posture: restrained · v2.0.0 */
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Terrazzo (deal 1/3) · nav: workspace rail and agent tabs · signature: editable dialogue graph with execution trace · states: full loading empty error · terrazzo: off-white · axes: light/geometric-sans/warm · posture: restrained · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: H, removed overview metric cards and made the dialogue graph the opening screen */
 @import url("./tokens.css");
 @import url("./base.css");
@@ -115,10 +115,6 @@ svg { flex-shrink: 0; stroke-width: 1.65; }
 .sidebar-bottom { margin-top: auto; padding-top: var(--space-lg); }
 .sidebar-bottom > .nav-link { font-size: 11px; gap: var(--space-xs); padding-inline: var(--space-xs); }
 .sidebar-bottom > .nav-link svg:last-child { margin-left: auto; }
-.demo-notice { display: flex; gap: var(--space-xs); padding: var(--space-md) var(--space-xs); margin-top: var(--space-xs); border-top: 1px solid var(--color-rule); color: var(--color-muted); }
-.demo-notice strong { font-size: 10px; font-weight: 500; display: block; margin-bottom: var(--space-2xs); }
-.demo-notice p { font-size: 10px; line-height: 1.6; }
-.demo-notice > svg { margin-top: var(--space-3xs); }
 .user-profile { display: flex; align-items: center; gap: var(--space-xs); border-top: 1px solid var(--color-rule); padding: var(--space-md) var(--space-2xs); }
 .user-avatar, .topbar-avatar { display: inline-grid; place-items: center; width: 30px; height: 30px; background: var(--color-paper-3); color: var(--color-ink-2); font-size: 10px; font-weight: 500; flex-shrink: 0; }
 .user-profile > span:nth-child(2) { min-width: 0; }
@@ -134,7 +130,6 @@ svg { flex-shrink: 0; stroke-width: 1.65; }
 .breadcrumb-divider { color: var(--color-grid); }
 .breadcrumb-agent { overflow: clip; text-overflow: ellipsis; color: var(--color-ink); }
 .topbar-actions { display: flex; align-items: center; gap: var(--space-xs); }
-.demo-label, .demo-tag { color: var(--color-muted); border: 1px solid var(--color-rule); font-size: 10px; padding: var(--space-3xs) var(--space-xs); white-space: nowrap; line-height: 1.7; }
 .global-search { background: transparent; border: 0; gap: var(--space-xs); color: var(--color-muted); font-size: 11px; }
 .global-search kbd { font-size: 9px; border: 1px solid var(--color-rule); padding: var(--space-3xs) var(--space-2xs); color: var(--color-muted); }
 .topbar-avatar { width: 28px; height: 28px; margin-left: var(--space-xs); }
@@ -263,7 +258,6 @@ main { min-width: 0; }
 .chat-context { display: flex; align-items: center; justify-content: space-between; padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--color-rule); }
 .chat-context small { color: var(--color-muted); font-size: 9px; display: block; margin-top: var(--space-2xs); }
 .chat-version { font-size: 10px; display: flex; align-items: center; gap: var(--space-xs); }
-.demo-tag { padding: 0 var(--space-control); font-size: 9px; }
 .chat-messages { padding: var(--space-lg) var(--space-md); display: flex; flex-direction: column; gap: var(--space-lg); min-height: 145px; max-height: 310px; overflow-y: auto; flex: 1; }
 .chat-message { display: flex; gap: var(--space-xs); align-items: flex-start; }
 .bot-avatar { display: grid; place-items: center; width: 25px; height: 25px; background: var(--color-paper-2); color: var(--color-muted); flex-shrink: 0; margin-top: var(--space-2xs); }
@@ -364,7 +358,6 @@ main { min-width: 0; }
 .version-row { display: flex; align-items: center; gap: var(--space-lg); padding: var(--space-lg) 0; border-bottom: 1px solid var(--color-rule); }
 .version-row > svg { color: var(--color-muted); }
 .version-row p { color: var(--color-muted); font-size: var(--text-label); margin-top: var(--space-xs); }
-.version-row .demo-label { margin-left: auto; }
 .version-row > code { color: var(--color-muted); }
 .channel-tabs { margin-bottom: var(--space-lg); }
 .channel-config { padding-top: var(--space-md); }
@@ -437,7 +430,6 @@ main { min-width: 0; }
 .integration-row h2 { font-size: var(--text-md); }
 .integration-row p { color: var(--color-muted); font-size: var(--text-label); margin-top: var(--space-2xs); }
 .integration-row code { color: var(--color-muted); font-size: 10px; }
-.integration-row > .demo-label { margin-left: auto; }
 .integration-detail { margin-top: var(--space-lg); background: var(--color-paper); padding: var(--space-lg); }
 .integration-detail dl { margin: 0; }
 .integration-detail dl > div { display: flex; gap: var(--space-xl); padding-block: var(--space-sm); font-size: var(--text-label); }
@@ -521,7 +513,7 @@ dialog::backdrop { background: var(--color-overlay); }
 
 @media (max-width: 640px) {
   :root { --page-padding: 16px; --space-page: 16px; }
-  .topbar-avatar, .demo-label:not(.version-row .demo-label, .key-example .demo-label, .integration-row .demo-label, .conversation-detail .demo-label) { display: none; }
+  .topbar-avatar { display: none; }
   .topbar .breadcrumbs { font-size: 11px; }
   .breadcrumb-agent { max-width: 120px; }
   .standard-page { padding-top: var(--space-lg); }
@@ -605,7 +597,6 @@ dialog::backdrop { background: var(--color-overlay); }
   .conversation-row strong { font-size: 13px; }
   .conversation-row > svg { margin-left: auto; }
   .integration-row { flex-wrap: wrap; gap: var(--space-md); }
-  .integration-row > .demo-label { margin-left: 0; }
   .integration-row > .button { margin-left: auto; }
   .integration-detail dl > div { flex-direction: column; gap: var(--space-xs); }
   .member-row { flex-wrap: wrap; gap: var(--space-sm); }
@@ -623,8 +614,8 @@ dialog::backdrop { background: var(--color-overlay); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
 /* Finish pass: legible utility labels and isolated controls. */
-.org-copy > span, .org-copy select, .demo-notice strong, .demo-notice p,
-.user-profile strong, .user-profile small, .global-search kbd, .demo-label, .demo-tag,
+.org-copy > span, .org-copy select,
+.user-profile strong, .user-profile small, .global-search kbd,
 .status, .state-picker select, .agent-title-cell code, .save-state,
 .canvas-controls > span:not(.toolbar-separator), .canvas-hint, .panel-tabs button,
 .chat-context small, .chat-version, .message-author, .chat-suggestions > span,
@@ -634,7 +625,6 @@ dialog::backdrop { background: var(--color-overlay); }
 .inspector-meta, .inspector-meta code, .conversation-row > div > span,
 .conversation-row code, .conversation-status, .detail-definition code,
 .integration-row code, .member-row small { font-size: 11px; }
-.demo-notice p { font-size: 12px; }
 .org-copy { flex: 1; }
 .org-switch > svg { margin-left: auto; }
 .org-copy select { border: 0; border-bottom: 1px solid var(--color-field-edge); appearance: none; }
@@ -701,18 +691,6 @@ dialog::backdrop { background: var(--color-overlay); }
   .sidebar-collapsed .sidebar { visibility: hidden; overflow: hidden; padding-inline: 0; border: 0; }
 }
 @media (max-width: 960px) { .desktop-sidebar-toggle { display: none; } }
-
-/* Navigation boundary control: belongs to the rail, outside page breadcrumbs. */
-.app-shell { position: relative; }
-.sidebar-edge-toggle { position: absolute; left: calc(var(--sidebar-width) - 16px); top: 26px; z-index: var(--z-sticky-nav); min-height: 32px; width: 32px; padding: 0; background: var(--color-plate); border: 1px solid var(--color-rule); color: var(--color-muted); }
-.sidebar-edge-toggle::before { content: ''; position: absolute; inset: -6px; }
-.sidebar-edge-toggle:hover { color: var(--color-ink); background: var(--color-paper-2); }
-.sidebar-collapsed .sidebar-edge-toggle { left: var(--space-md); top: var(--space-md); }
-.sidebar-collapsed .topbar { padding-left: var(--space-2xl); }
-@media (max-width: 960px) {
-  .sidebar-edge-toggle { display: none; }
-  .sidebar-collapsed .topbar { padding-left: var(--space-md); }
-}
 
 /* Account and workspace entry */
 .auth-layout { min-height: 100dvh; background: var(--color-paper); padding: var(--space-xl); }
