@@ -1,16 +1,16 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { CredentialsPage, EmailPage, ResetPage } from './pages/Auth'
+import { EmailPage, LoginPage, PasswordPage } from './pages/Auth'
 import { InvitationPage, OrganizationsPage, RequireSession, WorkspacePage } from './pages/Organizations'
 import { DeletionStatusPage } from './pages/Deletion'
 
 export function Root() {
   return <Routes>
     <Route path="/" element={<Navigate to="/app/organizations" replace/>}/>
-    <Route path="/login" element={<CredentialsPage register={false}/>}/>
-    <Route path="/register" element={<CredentialsPage register/>}/>
-    <Route path="/forgot-password" element={<EmailPage/>}/>
-    <Route path="/verify-email" element={<EmailPage verify/>}/>
-    <Route path="/reset-password" element={<ResetPage/>}/>
+    <Route path="/login" element={<LoginPage/>}/>
+    <Route path="/register" element={<EmailPage key="register" mode="register"/>}/>
+    <Route path="/forgot-password" element={<EmailPage key="reset-request" mode="reset"/>}/>
+    <Route path="/verify-email" element={<PasswordPage key="verify" verify/>}/>
+    <Route path="/reset-password" element={<PasswordPage key="reset"/>}/>
     <Route path="/invitations/accept" element={<InvitationPage/>}/>
     <Route path="/app/organizations" element={<RequireSession><OrganizationsPage/></RequireSession>}/>
     <Route path="/app/deletions/:jobId" element={<RequireSession><DeletionStatusPage/></RequireSession>}/>

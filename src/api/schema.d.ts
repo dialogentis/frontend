@@ -3263,6 +3263,13 @@ export interface components {
             role: "owner" | "admin" | "editor" | "viewer";
         };
         Origins: string[];
+        /** PasswordSetupInput */
+        PasswordSetupInput: {
+            /** Token */
+            token: string;
+            /** Password */
+            password: string;
+        };
         /** Position */
         Position: {
             /** X */
@@ -3328,6 +3335,16 @@ export interface components {
             status: "processing" | "completed" | "unknown";
             /** Sequence */
             sequence: number | null;
+        };
+        /** RegistrationInput */
+        RegistrationInput: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Invitation Token */
+            invitation_token?: string | null;
         };
         /** ReleaseCheck */
         ReleaseCheck: {
@@ -3434,13 +3451,6 @@ export interface components {
             graph_validation: "not_checked";
             /** Warnings */
             warnings: string[];
-        };
-        /** ResetInput */
-        ResetInput: {
-            /** Token */
-            token: string;
-            /** Password */
-            password: string;
         };
         /** RoleInput */
         RoleInput: {
@@ -3626,11 +3636,6 @@ export interface components {
             type: "text";
             /** Text */
             text: string;
-        };
-        /** TokenInput */
-        TokenInput: {
-            /** Token */
-            token: string;
         };
         /** TraceTurn */
         TraceTurn: {
@@ -3985,7 +3990,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Credentials"];
+                "application/json": components["schemas"]["RegistrationInput"];
             };
         };
         responses: {
@@ -4117,7 +4122,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EmailInput"];
+                "application/json": components["schemas"]["RegistrationInput"];
             };
         };
         responses: {
@@ -4249,7 +4254,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TokenInput"];
+                "application/json": components["schemas"]["PasswordSetupInput"];
             };
         };
         responses: {
@@ -5023,7 +5028,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ResetInput"];
+                "application/json": components["schemas"]["PasswordSetupInput"];
             };
         };
         responses: {

@@ -20,7 +20,6 @@ try {
   await page.setViewport({ width: 1280, height: 800 })
   await page.goto(`${base}/register`, { waitUntil: 'networkidle0' })
   await page.type('[name="email"]', email)
-  await page.type('[name="password"]', password)
   await click('Создать аккаунт')
   await page.waitForFunction(() => location.pathname === '/verify-email')
   let link
@@ -29,12 +28,15 @@ try {
     const message = data.messages?.find(item => item.Subject.includes('Подтверждение') && item.To.some(to => to.Address === email))
     if (message) {
       const details = await (await fetch(`${mailbox}/api/v1/message/${message.ID}`)).json()
-      link = details.Text.match(/https?:\/\/[^\s]+#token=[A-Za-z0-9_-]+/)?.[0]
+      link = details.Text.match(/https?:\/\/[^\s]+#token=[A-Za-z0-9_-]+(?:&invite=[A-Za-z0-9_-]+)?/)?.[0]
     }
     if (!link) await new Promise(resolve => setTimeout(resolve, 100))
   }
   assert.ok(link)
   await page.goto(link, { waitUntil: 'networkidle0' })
+  await page.waitForSelector('[name="password"][autocomplete="new-password"]', { visible: true })
+  await page.type('[name="password"]', password)
+  await click('Сохранить пароль')
   await contains('Почта подтверждена')
   await click('Вернуться ко входу')
   await page.waitForSelector('[name="password"]')

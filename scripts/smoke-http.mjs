@@ -24,7 +24,7 @@ const mailLink = async (subject, recipient = email) => {
     const message = (data.messages || []).find(m => m.Subject.includes(subject) && m.To.some(r => r.Address === recipient))
     if (message) {
       const details = await (await fetch(`${mailbox}/api/v1/message/${message.ID}`)).json()
-      const match = details.Text.match(/https?:\/\/[^\s]+#token=[A-Za-z0-9_-]+/)
+      const match = details.Text.match(/https?:\/\/[^\s]+#token=[A-Za-z0-9_-]+(?:&invite=[A-Za-z0-9_-]+)?/)
       assert.ok(match)
       return match[0]
     }
@@ -37,13 +37,15 @@ try {
   await page.goto(`${base}/app/organizations`, { waitUntil: 'networkidle0' })
   await page.waitForFunction(() => location.pathname === '/login')
   await click('Зарегистрироваться')
-  await page.waitForSelector('[name="password"][autocomplete="new-password"]', { visible: true })
+  await page.waitForFunction(() => document.querySelector('h1')?.textContent === 'Создать аккаунт')
   await page.type('[name="email"]', email)
-  await page.type('[name="password"]', password)
   await click('Создать аккаунт')
   await page.waitForFunction(() => location.pathname === '/verify-email')
   const confirmation = await mailLink('Подтверждение')
   await page.goto(confirmation, { waitUntil: 'networkidle0' })
+  await page.waitForSelector('[name="password"][autocomplete="new-password"]', { visible: true })
+  await page.type('[name="password"]', password)
+  await click('Сохранить пароль')
   await contains('Почта подтверждена')
   assert.equal(await page.evaluate(() => location.hash), '')
   await click('Вернуться ко входу')
