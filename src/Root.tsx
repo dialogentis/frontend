@@ -16,7 +16,8 @@ export function Root() {
     <Route path="/app/deletions/:jobId" element={<RequireSession><DeletionStatusPage/></RequireSession>}/>
     <Route path="/app/o/:orgId" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="/app/o/:orgId/overview" element={<RequireSession><WorkspacePage/></RequireSession>}/>
-    <Route path="/app/o/:orgId/agents/:agentId" element={<RequireSession><WorkspacePage/></RequireSession>}/>
+    <Route path="/app/o/:orgId/agents" element={<RequireSession><WorkspacePage/></RequireSession>}/>
+    <Route path="/app/o/:orgId/agents/:agentId/:section?" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="/app/o/:orgId/members" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="/app/o/:orgId/settings" element={<RequireSession><WorkspacePage/></RequireSession>}/>
     <Route path="/app/o/:orgId/integrations" element={<RequireSession><WorkspacePage/></RequireSession>}/>

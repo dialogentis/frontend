@@ -67,10 +67,19 @@ const guestEmail = `guest-${randomUUID()}@example.com`
 const cancelledEmail = `cancelled-${randomUUID()}@example.com`
 const password = 'browser password 12345'
 const click = async text => {
-  for (const element of await page.$$('button, a')) {
-    if ((await element.evaluate(e => e.textContent)).trim() === text) { await element.click(); return }
+  const control = await page.waitForFunction(name => [...document.querySelectorAll('button, a')].find(element => {
+    const title = element.getAttribute('aria-labelledby')
+    const label = (title && document.getElementById(title)?.textContent || element.textContent).trim()
+    return label === name && element.getClientRects().length > 0 && !element.matches(':disabled')
+      && getComputedStyle(element).visibility === 'visible'
+  }), { timeout: 10000 }, text)
+  try {
+    const tab = await control.evaluate(element => element.id.startsWith('agent-tab-') ? element.id : null)
+    await control.asElement().click()
+    if (tab) await page.waitForFunction(id => document.getElementById(id)?.getAttribute('aria-selected') === 'true', {}, tab)
+  } finally {
+    await control.dispose()
   }
-  throw new Error(`Missing action: ${text}`)
 }
 const contains = text => page.waitForFunction(value => document.body.innerText.includes(value), {}, text)
 const mailLink = async (subject, recipient = email) => {
@@ -136,6 +145,30 @@ try {
   await page.type('[name="agent_description"]', 'Поддержка клиентов')
   await click('Создать')
   await contains('Поддержка клиентов')
+  if (process.env.GRAPH_ONLY) {
+    const edit = '[aria-label="Изменить Помощник"]'
+    await page.hover(edit)
+    await page.waitForSelector('.agent-action-hint', { visible: true })
+    assert.equal(await page.$eval('.agent-action-hint', hint => hint.textContent), 'Изменить название и описание')
+    await page.keyboard.press('Escape')
+    await page.waitForSelector('.agent-action-hint', { hidden: true })
+    await page.click('.agent-row-link .agent-letter')
+    await page.waitForFunction(() => location.pathname.includes('/agents/'))
+    await click('← К агентам')
+    await page.waitForSelector(edit)
+    await page.click(edit)
+    await page.type('[name="agent_name"]', ' Изменён')
+    await click('Создать агента')
+    await page.waitForSelector('dialog[open]')
+    await click('Остаться')
+    assert.equal(await page.$eval('[name="agent_name"]', input => input.value), 'Помощник Изменён')
+    await page.focus('[name="agent_name"]')
+    await page.keyboard.press('Escape')
+    await page.waitForSelector('dialog[open]')
+    await click('Отбросить изменения')
+    await page.waitForFunction(() => document.activeElement.getAttribute('aria-label') === 'Изменить Помощник')
+    console.log('PASS: row and labels are discoverable, and switching forms preserves unsaved changes')
+  }
   await page.reload({ waitUntil: 'networkidle0' })
   await contains('Помощник')
   await page.click('[aria-label="Изменить Помощник"]')
@@ -144,10 +177,25 @@ try {
   await page.type('[name="agent_name"]', 'Консультант')
   await click('Сохранить')
   await page.waitForSelector('[aria-label="В архив Консультант"]')
+  const agentListHistoryIndex = await page.evaluate(() => history.state.idx)
   await click('Консультант')
   await page.waitForFunction(() => location.pathname.includes('/agents/'))
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
   if (process.env.GRAPH_ONLY) {
+    await page.focus('#agent-tab-flow')
+    await page.keyboard.press('ArrowRight')
+    await page.waitForFunction(() => location.pathname.endsWith('/intents'))
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#agent-tab-intents[aria-selected="true"]')
+    await page.setViewport({ width: 375, height: 812 })
+    await page.click('.workspace-draft .export-menu > summary')
+    assert.ok(await page.$eval('.export-popover', panel => {
+      const rect = panel.getBoundingClientRect()
+      return rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth
+    }))
+    await page.click('.workspace-draft .export-menu > summary')
+    await page.setViewport({ width: 1280, height: 800 })
+    await click('Сценарий')
     const sidebarToggle = '.topbar button[aria-controls="workspace-sidebar"]'
     const expandedWidth = await page.$eval('.workspace-shell', element => element.clientWidth)
     await page.focus(sidebarToggle)
@@ -424,7 +472,11 @@ try {
   await page.waitForFunction(() => document.querySelector('.training-report')?.textContent.includes('F1 намерений'), { timeout: 90000 })
   assert.match(await page.$eval('.training-report', report => report.textContent), /Пороги версии: оценка 57\s*%/)
   assert.match(await page.$eval('.training-report', report => report.textContent), /F1 намерений ниже 78\s*%/)
-  await contains('Сценарий ещё не проверен')
+  assert.ok(await page.$eval('.training-detail', detail => {
+    const publication = detail.querySelector('.release-panel')
+    const report = detail.querySelector('.training-report')
+    return publication.getBoundingClientRect().top < report.getBoundingClientRect().top
+  }))
   assert.equal(await page.$$eval('.training-version-list button[aria-pressed]', buttons => buttons.length), 1)
   assert.deepEqual(await page.$eval('.test-chat select', input => ({
     mode: input.value,
@@ -473,7 +525,7 @@ try {
     const secret = await page.$eval('[name="issued_api_key"]', input => input.value)
     await click('Закрыть')
     const runtime = `${base}/api/v1/runtime`
-    const rootId = new URL(page.url()).pathname.split('/').at(-1)
+    const rootId = new URL(page.url()).pathname.split('/')[5]
     const auth = { Authorization: `Bearer ${secret}` }
     const opened = await fetch(`${runtime}/agents/${rootId}/conversations`, {
       method: 'POST', headers: { ...auth, 'Idempotency-Key': randomUUID() },
@@ -510,7 +562,13 @@ try {
     await click('Найти')
     await contains('Сбросить поиск')
     await page.waitForFunction(() => document.querySelector('.history-list-item')?.textContent.includes('Внешний API'))
+    await page.setViewport({ width: 360, height: 800 })
     await page.click('.history-list-item')
+    await page.waitForFunction(() => {
+      const heading = document.querySelector('.history-pane h2')
+      return heading && document.activeElement === heading && heading.getBoundingClientRect().top < innerHeight
+    })
+    await page.setViewport({ width: 1280, height: 800 })
     await page.waitForFunction(() => {
       const texts = [...document.querySelectorAll('.history-pane .history-message p')].map(item => item.textContent)
       return texts.includes('Абракадабра') && texts.includes('Сумма: [скрыто]')
@@ -553,6 +611,7 @@ try {
     await page.waitForSelector('.organization-settings-form input[type="checkbox"]:checked')
     await page.click('.organization-settings-form input[type="checkbox"]:checked')
     await click('Сохранить')
+    await click('Подтвердить удаление данных')
     await contains('Настройки сохранены.')
     await click('Диалоги')
     await contains('Поиск доступен при включённом сохранении текста.')
@@ -588,6 +647,20 @@ try {
     await page.waitForSelector('[name="overview_job_status"]')
     await page.select('[name="overview_job_status"]', 'succeeded')
     await page.waitForFunction(() => document.querySelector('.overview-jobs')?.textContent.includes('Удаление истории'))
+    await click('Агенты')
+    const archiveButton = '[aria-label="В архив Консультант"]'
+    await page.waitForSelector(archiveButton)
+    await page.click(archiveButton)
+    await contains('Новые диалоги с агентом «Консультант» перестанут запускаться.')
+    await click('Отмена')
+    await page.waitForSelector('dialog[open]', { hidden: true })
+    await page.click(archiveButton)
+    await click('Переместить в архив')
+    await contains('«Консультант» перемещён в архив.')
+    await click('Восстановить')
+    await page.waitForSelector(archiveButton)
+    await contains('«Консультант» восстановлен.')
+    console.log('PASS: archiving a published agent requires confirmation and can be undone')
     assert.deepEqual(errors, [])
     console.log('PASS: history export is prepared by the queue and revoked after deletion')
     console.log('PASS: filtered history deletion confirms the scope, survives a lost response and clears saved replies')
@@ -641,7 +714,7 @@ try {
   await contains('Блок недостижим из начала сценария')
   await contains('Остальные настройки и готовность к публикации пока не проверены')
   if (process.env.FLOW_VALIDATION_SCREENSHOT_PATH) await page.screenshot({ path: process.env.FLOW_VALIDATION_SCREENSHOT_PATH })
-  await click('Блок «Завершение»')
+  await click('Открыть блок Завершение')
   assert.equal(await page.$eval('.draft-inspector h2', heading => heading.textContent), 'Завершение')
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Настройки блока')
   await page.click('.react-flow__node-intentSwitch')
@@ -680,9 +753,10 @@ try {
   } finally { await secondTab.close() }
   await click('Добавить сбор параметра')
   await page.waitForSelector('.react-flow__node-askSlot')
-  await page.click('.react-flow__node-askSlot')
   const askId = await page.$eval('.react-flow__node-askSlot', node => node.getAttribute('data-id'))
   assert.ok(askId)
+  await page.select('.draft-node-picker select', askId)
+  await page.waitForSelector('[name="ask_slot"]')
   await page.select('[name="ask_slot"]', sourceSlotId)
   await page.type('[name="ask_prompt"]', 'Укажите сумму')
   await page.select('[name="ask_attempts"]', '2')
@@ -695,9 +769,10 @@ try {
   if (process.env.ASK_SCREENSHOT_PATH) await page.screenshot({ path: process.env.ASK_SCREENSHOT_PATH })
   await click('Добавить присваивание')
   await page.waitForSelector('.react-flow__node-setSlot')
-  await page.click('.react-flow__node-setSlot')
   const setId = await page.$eval('.react-flow__node-setSlot', node => node.getAttribute('data-id'))
   assert.ok(setId)
+  await page.select('.draft-node-picker select', setId)
+  await page.waitForSelector('[name="set_slot"]')
   await page.select('[name="set_slot"]', sourceSlotId)
   await page.type('[name="set_value"]', '12.5')
   await page.select('[aria-label="Переход: Далее"]', endId)
@@ -735,13 +810,22 @@ try {
   await contains('Ошибок в проверенных элементах нет')
   await click('Добавить ответ')
   await contains('Сценарий изменился. Повторите проверку после сохранения.')
-  assert.equal(await page.$eval('.flow-validation > button', button => button.disabled), true)
+  assert.equal(await page.$eval('.flow-validation .draft-flow-navigation > button', button => button.disabled), true)
   assert.equal(await page.$('.flow-validation-result'), null)
   await page.waitForFunction(() => [...document.querySelectorAll('.react-flow__node')].some(node => node.textContent.trim() === 'Ответ'))
   await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
   await page.type('[name="draft_node_text"]', 'Здравствуйте, чем помочь?')
-  const backConfirmation = new Promise(resolve => page.once('dialog', async dialog => { await dialog.dismiss(); resolve() }))
   await page.evaluate(() => history.back())
+  await page.waitForSelector('#agent-tab-training[aria-selected="true"]', { timeout: 5000 })
+  await page.evaluate(() => history.forward())
+  await page.waitForSelector('#agent-tab-flow[aria-selected="true"]', { timeout: 5000 })
+  await page.waitForSelector('[name="draft_node_text"]')
+  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?')
+  await page.$eval('[name="draft_node_text"]', input => { input.focus(); input.setSelectionRange(input.value.length, input.value.length) })
+  await page.type('[name="draft_node_text"]', '!')
+  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  const backConfirmation = new Promise(resolve => page.once('dialog', async dialog => { await dialog.dismiss(); resolve() }))
+  await page.evaluate(index => history.go(index - history.state.idx), agentListHistoryIndex)
   await Promise.race([backConfirmation, new Promise((_, reject) => setTimeout(() => reject(new Error('Back navigation did not warn about unsaved changes')), 5000))])
   assert.ok(await page.evaluate(() => location.pathname.includes('/agents/')))
   page.once('dialog', dialog => dialog.dismiss())
@@ -753,11 +837,12 @@ try {
   await page.waitForFunction(async () => {
     const parts = location.pathname.split('/')
     const data = await (await fetch(`/api/v1/organizations/${parts[3]}/agents/${parts[5]}/draft`)).json()
-    return data.config.flow.nodes.some(node => node.type === 'say' && node.config.text === 'Здравствуйте, чем помочь?')
+    return data.config.flow.nodes.some(node => node.type === 'say' && node.config.text === 'Здравствуйте, чем помочь?!')
   }, { timeout: 10000 })
   await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
   await page.evaluate(() => { window.__dropDraftResponse = true })
-  await page.type('[name="draft_node_text"]', '!')
+  await page.$eval('[name="draft_node_text"]', input => { input.focus(); input.setSelectionRange(input.value.length, input.value.length) })
+  await page.type('[name="draft_node_text"]', ' Слушаю.')
   await contains('Сохранение не подтверждено')
   await click('Проверить сохранение')
   await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(status => status.textContent === 'Сохранено'))
@@ -768,7 +853,7 @@ try {
   assert.equal(await page.evaluate(async () => { const p = location.pathname.split('/'); const d = (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config; const slot = d.slots.find(item => item.code === 'amount'); const set = d.flow.nodes.find(node => node.type === 'set_slot'); return set?.config.slot_id === slot.id && set.config.value === '12.5' && d.flow.edges.filter(edge => edge.source === set.id).length === 2 }), true)
   assert.equal(await page.evaluate(async () => { const p = location.pathname.split('/'); const d = (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config; const slot = d.slots.find(item => item.code === 'amount'); const condition = d.flow.nodes.find(node => node.type === 'condition'); return condition?.config.branches[0].expression.conditions.every(child => child.slot_id === slot.id) && d.flow.edges.some(edge => edge.source === condition.id && edge.source_handle === condition.config.branches[0].id) }), true)
   await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
-  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?! Слушаю.')
   assert.equal(await page.evaluate(async () => {
     const csrf = (await (await fetch('/api/v1/auth/me')).json()).csrf_token
     const parts = location.pathname.split('/')
@@ -785,7 +870,7 @@ try {
   assert.equal(await page.evaluate(async () => { const p = location.pathname.split('/'); const d = (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config; const slot = d.slots.find(item => item.code === 'amount'); const set = d.flow.nodes.find(node => node.type === 'set_slot'); return set?.config.slot_id === slot.id && set.config.value === '12.5' && d.flow.edges.filter(edge => edge.source === set.id).length === 2 }), true)
   assert.equal(await page.evaluate(async () => { const p = location.pathname.split('/'); const d = (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config; const slot = d.slots.find(item => item.code === 'amount'); const condition = d.flow.nodes.find(node => node.type === 'condition'); return condition?.config.branches[0].expression.conditions.every(child => child.slot_id === slot.id) && d.flow.edges.some(edge => edge.source === condition.id && edge.source_handle === condition.config.branches[0].id) }), true)
   await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
-  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?! Слушаю.')
   await click('Намерения')
   await contains('Статус заказа')
   await click('Сущности')
@@ -802,7 +887,6 @@ try {
   await page.click('[aria-label="Копировать Консультант"]')
   await page.type('[name="agent_slug"]', 'assistant-copy')
   await click('Копировать')
-  await page.waitForFunction(() => [...document.querySelectorAll('a')].some(link => link.textContent.trim() === 'Консультант (копия)'))
   await click('Консультант (копия)')
   await page.waitForFunction(() => [...document.querySelectorAll('.react-flow__node')].some(node => node.textContent.trim() === 'Ответ'))
   assert.equal(await page.evaluate(async originalId => { const p = location.pathname.split('/'); const d = (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config; const intent = d.intents.find(item => item.code === 'order_status'); return intent.id !== originalId && d.flow.edges.some(edge => edge.source_handle === intent.id && d.flow.nodes.some(node => node.id === edge.target && node.type === 'end')) }, sourceIntentId), true)
@@ -812,7 +896,7 @@ try {
   assert.equal(await page.evaluate(async () => { const p = location.pathname.split('/'); const d = (await (await fetch(`/api/v1/organizations/${p[3]}/agents/${p[5]}/draft`)).json()).config; const slot = d.slots.find(item => item.code === 'amount'); const condition = d.flow.nodes.find(node => node.type === 'condition'); return condition?.config.branches[0].expression.conditions.every(child => child.slot_id === slot.id) && d.flow.edges.some(edge => edge.source === condition.id && edge.source_handle === condition.config.branches[0].id) }), true)
   if (!process.env.CONDITION_ONLY) {
   await page.$$eval('.react-flow__node', nodes => nodes.find(node => node.textContent.trim() === 'Ответ').click())
-  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?!')
+  assert.equal(await page.$eval('[name="draft_node_text"]', input => input.value), 'Здравствуйте, чем помочь?! Слушаю.')
   await click('Намерения')
   await contains('Статус заказа')
   await click('Сущности')

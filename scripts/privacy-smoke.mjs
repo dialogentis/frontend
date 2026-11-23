@@ -18,6 +18,8 @@ const contains = text => page.waitForFunction(value => document.body.innerText.i
 
 try {
   await page.setViewport({ width: 1280, height: 800 })
+  const loginPage = await fetch(`${base}/login`)
+  assert.match(loginPage.headers.get('content-security-policy'), /frame-ancestors 'none'/)
   await page.goto(`${base}/register`, { waitUntil: 'networkidle0' })
   await page.type('[name="email"]', email)
   await click('Создать аккаунт')
@@ -54,6 +56,12 @@ try {
   await page.$eval('.settings-checkbox input', input => input.click())
   assert.equal(await page.$$eval('.settings-checkbox input', inputs => inputs[1].checked), true)
   await click('Сохранить')
+  await page.waitForSelector('dialog[open]')
+  await contains('Текст уже сохранённых сообщений будет удалён')
+  await click('Вернуться к настройкам')
+  await page.waitForSelector('dialog[open]', { hidden: true })
+  await click('Сохранить')
+  await click('Подтвердить удаление данных')
   await contains('Настройки сохранены.')
   await page.reload({ waitUntil: 'networkidle0' })
   assert.equal(await page.$eval('.settings-checkbox input', input => input.checked), false)
@@ -81,4 +89,21 @@ try {
   await click('Удалить')
   await contains('Интеграций пока нет')
   console.log('PASS: organization privacy settings and integrations')
+
+  assert.equal(await page.evaluate(async () => {
+    const session = await (await fetch('/api/v1/auth/me')).json()
+    const response = await fetch('/api/v1/auth/logout', {
+      method: 'POST', headers: { 'X-CSRF-Token': session.csrf_token },
+    })
+    return response.status
+  }), 204)
+  await click('Аналитика')
+  await page.waitForFunction(() => location.pathname === '/login')
+  await page.waitForSelector('[name="password"][autocomplete="current-password"]')
+  await page.type('[name="email"]', email)
+  await page.type('[name="password"]', password)
+  await click('Войти')
+  await page.waitForFunction(() => location.pathname.endsWith('/analytics'))
+  await contains('Аналитика')
+  console.log('PASS: a cabinet 401 returns to login and then back to the requested page')
 } finally { await browser.close() }

@@ -143,5 +143,10 @@ export async function verifyLargeGraph(page, click) {
   await waitForPosition(position)
   await click('Повторить изменение')
   await waitForPosition(movedPosition)
+  await page.focus(`.react-flow__node[data-id="${visible.id}"]`)
+  await page.keyboard.press('Space')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await waitForPosition({ x: movedPosition.x + 10, y: movedPosition.y })
   console.log('PASS: minimap, node list, keyboard undo and redo all work on the full graph')
 }

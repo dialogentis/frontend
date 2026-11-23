@@ -51,7 +51,7 @@ export function Integrations({ orgId, role }: { orgId: string; role: Role }) {
     })
   }
   return <section><div className="section-heading"><div><h1>Интеграции</h1><p>Подключения к внешним HTTPS-сервисам.</p></div>{editable && <button className="button button-primary" disabled={busy} onClick={() => { setError(''); setRotation(null); setEditing('new') }}>Добавить интеграцию</button>}</div>
-    <p className="field-help">Вызовы интеграций из сценариев пока не подключены.</p>
+    <p className="field-help">Выберите подключение в блоке «HTTP-запрос» редактора сценария.</p>
     {error && <p role="alert" className="auth-error">{error}</p>}
     {editing && <IntegrationForm key={editing === 'new' ? 'new' : editing.id} orgId={orgId} initial={editing === 'new' ? null : editing} busy={busy} onCancel={() => setEditing(null)} onSave={work => void run(async () => { await work(); setEditing(null) })}/>}
     {rotation && <form className="integration-form" onSubmit={rotate}><h2>Новый секрет: {rotation.name}</h2><label className="field-label">Секрет<input type="password" autoComplete="new-password" value={secret} onChange={event => setSecret(event.target.value)} required/></label><div className="row-actions"><button className="button button-primary" disabled={busy || !secret}>Обновить секрет</button><button type="button" className="button button-quiet" onClick={() => { setSecret(''); setRotation(null) }}>Отмена</button></div></form>}

@@ -1,7 +1,7 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, check, setCsrf } from './api'
+import { api, check, onSessionExpired, setCsrf } from './api'
 import type { components } from './api/schema'
 
 type SessionData = components['schemas']['MeResult']
@@ -10,9 +10,18 @@ const SessionContext = createContext<Context | null>(null)
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const cache = useQueryClient()
+  useEffect(() => onSessionExpired(() => {
+    void cache.cancelQueries()
+    cache.removeQueries({ predicate: query => query.queryKey[0] !== 'session' })
+    cache.setQueryData(['session'], null)
+  }), [cache])
   const query = useQuery({ queryKey: ['session'], queryFn: async () => {
     const { data, error, response } = await api.GET('/api/v1/auth/me')
-    if (response.status === 401) { setCsrf(null); return null }
+    if (response.status === 401) {
+      setCsrf(null)
+      cache.removeQueries({ predicate: query => query.queryKey[0] !== 'session' })
+      return null
+    }
     check(response, error)
     if (!data) throw new Error('Некорректный ответ сервера')
     setCsrf(data.csrf_token)

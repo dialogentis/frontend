@@ -5,10 +5,27 @@ export const api = createClient<paths>({ baseUrl: '' })
 let csrf: string | null = null
 export function setCsrf(value: string | null) { csrf = value }
 export function getCsrf() { return csrf }
+const sessionEvents = new EventTarget()
+const authenticatedRequests = new WeakMap<Request, string>()
+
+export function onSessionExpired(listener: () => void) {
+  sessionEvents.addEventListener('expired', listener)
+  return () => sessionEvents.removeEventListener('expired', listener)
+}
+
 api.use({
-  onRequest({ request }) {
+  onRequest({ request, schemaPath }) {
+    if (csrf && /^\/api\/v1\/(organizations|deletions|invitations)(?:\/|$)/.test(schemaPath)) {
+      authenticatedRequests.set(request, csrf)
+    }
     if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) request.headers.set('X-CSRF-Token', csrf)
     return request
+  },
+  onResponse({ request, response }) {
+    if (response.status === 401 && csrf && authenticatedRequests.get(request) === csrf) {
+      setCsrf(null)
+      sessionEvents.dispatchEvent(new Event('expired'))
+    }
   },
 })
 

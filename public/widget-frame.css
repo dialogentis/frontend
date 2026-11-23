@@ -1,32 +1,51 @@
+/* Hallmark · component: embedded chat · states: closed, waiting, response, retry, complete */
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-:root { font: 15px/1.45 system-ui, sans-serif; color-scheme: light dark; }
-body { --accent: #da694e; margin: 0; height: 100dvh; padding: 4px; }
+:root {
+  --widget-space-1: 4px;
+  --widget-space-2: 8px;
+  --widget-space-3: 12px;
+  --widget-space-4: 16px;
+  --widget-font: 15px/1.45 system-ui, sans-serif;
+  --accent: #da694e;
+  --surface: Canvas;
+  --ink: CanvasText;
+  --focus: LinkText;
+  --frame-rule: color-mix(in srgb, var(--ink) 25%, var(--surface));
+  --divider: color-mix(in srgb, var(--ink) 14%, var(--surface));
+  --field-rule: color-mix(in srgb, var(--ink) 35%, var(--surface));
+  --agent-message: color-mix(in srgb, var(--ink) 8%, var(--surface));
+  --launcher-shadow: #0004;
+  --chat-shadow: #0003;
+  font: var(--widget-font);
+  color-scheme: light dark;
+}
+body { margin: 0; height: 100dvh; padding: var(--widget-space-1); }
 button, input { font: inherit; }
 button { cursor: pointer; color: inherit; }
-button:disabled { cursor: wait; opacity: .65; }
-button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid LinkText; outline-offset: 2px; }
+button:disabled { cursor: wait; color: var(--field-rule); background: var(--agent-message); }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
 #open-chat {
   width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--accent);
-  background: Canvas; box-shadow: 0 2px 7px #0004; font-weight: 800; letter-spacing: 2px;
+  background: var(--surface); box-shadow: 0 2px 7px var(--launcher-shadow); font-weight: 800; letter-spacing: 2px;
 }
 #chat {
-  display: flex; flex-direction: column; height: 100%; border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
-  border-top: 4px solid var(--accent); border-radius: 12px; background: Canvas; color: CanvasText;
-  overflow: hidden; box-shadow: 0 2px 7px #0003;
+  display: flex; flex-direction: column; height: 100%; border: 1px solid var(--frame-rule);
+  border-top: 4px solid var(--accent); border-radius: 12px; background: var(--surface); color: var(--ink);
+  overflow: hidden; box-shadow: 0 2px 7px var(--chat-shadow);
 }
-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, Canvas); }
-h1 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+header { display: flex; justify-content: space-between; align-items: center; gap: var(--widget-space-3); padding: var(--widget-space-3) var(--widget-space-4); border-bottom: 1px solid var(--divider); }
+h1 { margin: 0; font-size: 16px; overflow-wrap: anywhere; text-wrap: balance; }
 #close-chat { flex: 0 0 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; font-size: 23px; }
-#messages { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
-#welcome, .message { margin: 0; padding: 8px 11px; border-radius: 8px; align-self: flex-start; max-width: 92%; overflow-wrap: anywhere; white-space: pre-wrap; }
+#messages { display: flex; flex-direction: column; gap: var(--widget-space-2); flex: 1; min-height: 0; overflow-y: auto; padding: var(--widget-space-4); }
+#welcome, .message { margin: 0; padding: var(--widget-space-2) var(--widget-space-3); border-radius: 8px; align-self: flex-start; max-width: 92%; overflow-wrap: anywhere; white-space: pre-wrap; }
 #welcome:empty { display: none; }
-.message-agent, #welcome { background: color-mix(in srgb, CanvasText 8%, Canvas); }
-.message-user { align-self: flex-end; background: color-mix(in srgb, var(--accent) 18%, Canvas); }
-#status { margin: 0; padding-inline: 14px; font-size: 13px; }
-#status:not(:empty) { padding-bottom: 8px; }
-#composer { display: flex; gap: 6px; padding: 10px; border-top: 1px solid color-mix(in srgb, CanvasText 14%, Canvas); }
-#message { flex: 1; width: 0; min-width: 0; padding: 8px; font-size: 16px; border: 1px solid color-mix(in srgb, CanvasText 35%, Canvas); border-radius: 6px; background: Canvas; color: CanvasText; }
-#composer button, #retry, #restart { padding: 8px 10px; border: 1px solid color-mix(in srgb, CanvasText 35%, Canvas); border-radius: 6px; background: Canvas; }
-#retry, #restart { align-self: start; margin: 0 10px 10px; }
+.message-agent, #welcome { background: var(--agent-message); }
+.message-user { align-self: flex-end; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+#status { margin: 0; padding-inline: var(--widget-space-4); font-size: 13px; }
+#status:not(:empty) { padding-bottom: var(--widget-space-2); }
+#composer { display: flex; gap: var(--widget-space-2); padding: var(--widget-space-3); border-top: 1px solid var(--divider); }
+#message { flex: 1; width: 0; min-width: 0; padding: var(--widget-space-2); font-size: 16px; border: 1px solid var(--field-rule); border-radius: 6px; background: var(--surface); color: var(--ink); }
+#composer button, #retry, #restart { padding: var(--widget-space-2) var(--widget-space-3); border: 1px solid var(--field-rule); border-radius: 6px; background: var(--surface); }
+#retry, #restart { align-self: start; margin: 0 var(--widget-space-3) var(--widget-space-3); }

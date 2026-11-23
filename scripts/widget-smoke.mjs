@@ -81,11 +81,17 @@ export async function verifyWidget(browser, cabinet, click) {
     assert.match(await widget.$eval('#welcome', message => message.textContent), /Задайте вопрос о доставке/)
     const before = await widget.evaluate(() => {
       const original = window.fetch.bind(window)
+      let dropped = false
       window.fetch = async (url, options) => {
         const response = await original(url, options)
         if (String(url).includes('/widget/conversations/') && response.ok) {
-          window.fetch = original
-          throw new TypeError('Simulated lost response')
+          const result = await response.clone().json()
+          window.__widgetTokenRenewed = typeof result.session_token === 'string'
+            && options.headers.Authorization !== `Bearer ${result.session_token}`
+          if (!dropped) {
+            dropped = true
+            throw new TypeError('Simulated lost response')
+          }
         }
         return response
       }
@@ -100,6 +106,11 @@ export async function verifyWidget(browser, cabinet, click) {
     await widget.waitForFunction(count => document.querySelectorAll('.message-agent').length > count, {}, before)
     assert.equal(await widget.$$eval('.message-user', items => items.length), 1)
     assert.equal(await widget.$('.message-user b'), null)
+    assert.equal(await widget.evaluate(() => window.__widgetTokenRenewed), true)
+    await widget.type('#message', 'Узнать статус заказа 0')
+    await widget.click('#composer button')
+    await widget.waitForSelector('#restart:not([hidden])')
+    await widget.waitForFunction(() => document.activeElement.id === 'restart')
     await visitor.keyboard.press('Escape')
     await widget.waitForSelector('#open-chat:not([hidden])')
     await widget.waitForFunction(() => document.activeElement.id === 'open-chat')
@@ -123,7 +134,7 @@ export async function verifyWidget(browser, cabinet, click) {
       || blockedFrame?.url().startsWith('chrome-error://'),
       'Expected the forbidden iframe to be rejected by Chromium',
     )
-    console.log('PASS: widget runs on a separate allowed site, retries once, and blocks a foreign frame')
+    console.log('PASS: widget retries once, renews its token, focuses restart, and blocks a foreign frame')
   } finally {
     if (visitor) await visitor.close()
     await Promise.all([allowed.close(), forbidden.close()])

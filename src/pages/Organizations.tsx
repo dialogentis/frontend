@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -33,7 +33,7 @@ export function useOrganizations() {
 
 export function RequireSession({ children }: { children: React.ReactNode }) {
   const { session } = useSession(); const location = useLocation()
-  if (!session) return <Navigate to="/login" replace state={{ returnTo: location.pathname }}/>
+  if (!session) return <Navigate to="/login" replace state={{ returnTo: location.pathname + location.search + location.hash }}/>
   if (!session.user.email_verified) return <Navigate to="/verify-email" replace state={{ email: session.user.email }}/>
   return children
 }
@@ -54,6 +54,16 @@ export function OrganizationsPage() {
 
 export function WorkspacePage() {
   const { orgId, agentId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const location = useLocation(); const cache = useQueryClient(); const [error, setError] = useState(''); const [editorDirty, setEditorDirty] = useState(false); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
+  const previousOrg = useRef(orgId)
+  useEffect(() => {
+    const previous = previousOrg.current
+    previousOrg.current = orgId
+    if (previous && previous !== orgId) {
+      const predicate = (query: { queryKey: readonly unknown[] }) => query.queryKey.includes(previous)
+      void cache.cancelQueries({ predicate })
+      cache.removeQueries({ predicate })
+    }
+  }, [cache, orgId])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('dialogentis-sidebar-collapsed') === 'true' } catch { return false }
   })
@@ -91,7 +101,7 @@ export function WorkspacePage() {
   ]
   return <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}><aside id="workspace-sidebar" className="sidebar workspace-real-sidebar">
     <Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link>
-    <WorkspaceSwitcher value={current.id} organizations={options} onChange={id => { cache.removeQueries({ predicate: q => q.queryKey[0] !== 'session' && q.queryKey[0] !== 'organizations' }); navigate(`/app/o/${id}`) }}/>
+    <WorkspaceSwitcher value={current.id} organizations={options} onChange={id => navigate(`/app/o/${id}`)}/>
     <nav className="primary-nav" aria-label="Основная навигация">
       {links.map(({ suffix, label, icon: Icon, active }) => <Link key={suffix} to={root + suffix}
         className={`nav-link ${active ? 'nav-link-active' : ''}`} aria-current={active ? 'page' : undefined}>

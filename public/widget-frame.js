@@ -107,6 +107,7 @@
       }
       const result = await response.json()
       if (request.start) session = result
+      else if (result.session_token) session.session_token = result.session_token
       pending = undefined
       showResult(result)
     } catch {
@@ -116,7 +117,10 @@
       busy = false
       input.disabled = !!pending
       send.disabled = !!pending
-      if (!composer.hidden && !chat.hidden && !pending) input.focus()
+      if (!chat.hidden && !pending && document.hasFocus()) {
+        if (!composer.hidden) input.focus()
+        else if (!restart.hidden) restart.focus()
+      }
     }
   }
 

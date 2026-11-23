@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
@@ -29,14 +29,18 @@ function SettingsForm({ initial, reload, saved, onSaved, onEdited }: { initial: 
   const [purge, setPurge] = useState(initial.store_message_text)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const confirmation = useRef<HTMLDialogElement>(null)
   const editable = initial.role === 'owner' || initial.role === 'admin'
+  const removeText = !store && purge
+  const shortenRetention = days < initial.history_retention_days
 
-  const save = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setError('')
+  const save = async () => {
+    if (!editable || busy) return
+    setBusy(true); setError('')
     try {
       const result = await api.PATCH('/api/v1/organizations/{org_id}', {
         params: { path: { org_id: initial.id }, header: { 'If-Match': `"rev-${initial.settings_revision}"` } },
-        body: { name: name.trim(), history_retention_days: days, store_message_text: store, purge_existing_text: !store && purge },
+        body: { name: name.trim(), history_retention_days: days, store_message_text: store, purge_existing_text: removeText },
       })
       check(result.response, result.error)
       if (!result.data) throw new Error('Некорректный ответ сервера')
@@ -51,7 +55,11 @@ function SettingsForm({ initial, reload, saved, onSaved, onEdited }: { initial: 
   }
 
   return <section className="settings-workspace"><div className="page-heading"><div><h1>Настройки пространства</h1><p>Название и хранение данных диалогов.</p></div></div>
-    <form onSubmit={event => void save(event)} className="organization-settings-form">
+    <form onSubmit={event => {
+      event.preventDefault()
+      if (removeText || shortenRetention) confirmation.current?.showModal()
+      else void save()
+    }} className="organization-settings-form">
       <label className="field-label">Название<input value={name} maxLength={120} disabled={!editable || busy} onChange={event => { setName(event.target.value); onEdited() }} required/></label>
       <label className="field-label">Срок хранения текста, дней<input type="number" min={1} max={30} step={1} value={days} disabled={!editable || busy} onChange={event => { setDays(Number(event.target.value)); onEdited() }} required/><span className="field-help">От 1 до 30 дней. При сокращении срока данные за более ранний период удаляются.</span></label>
       <label className="settings-checkbox"><input type="checkbox" checked={store} disabled={!editable || busy} onChange={event => { if (!event.target.checked) setPurge(true); setStore(event.target.checked); onEdited() }}/>Сохранять текст сообщений</label>
@@ -62,5 +70,14 @@ function SettingsForm({ initial, reload, saved, onSaved, onEdited }: { initial: 
       {saved && !error && <p role="status">Настройки сохранены.</p>}
       {editable && <button className="button button-primary" disabled={busy || !name.trim() || !Number.isInteger(days) || days < 1 || days > 30}>{busy ? 'Сохранение…' : 'Сохранить'}</button>}
     </form>
+    <dialog ref={confirmation} className="standard-dialog" aria-labelledby="history-settings-confirmation">
+      <h2 id="history-settings-confirmation">Сохранить настройки и удалить данные?</h2>
+      {removeText && <p>Текст уже сохранённых сообщений будет удалён. Чтобы сохранить его, вернитесь и снимите отметку «Удалить ранее сохранённый текст».</p>}
+      {shortenRetention && <p>Данные старше {days} дн. будут удалены по новому сроку хранения.</p>}
+      <div className="dialog-actions agent-dialog-actions">
+        <button type="button" className="button button-quiet" autoFocus onClick={() => confirmation.current?.close()}>Вернуться к настройкам</button>
+        <button type="button" className="button button-primary" onClick={() => { confirmation.current?.close(); void save() }}>Подтвердить удаление данных</button>
+      </div>
+    </dialog>
   </section>
 }

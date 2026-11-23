@@ -113,7 +113,7 @@ export function ImportPanel({ orgId, agentId, revision, lease, enabled, onApplyi
           {preview.data.status === 'failed' && <p>{preview.data.error_code === 'import_stale' ? 'Черновик изменился. Проверьте файл заново.' : 'Не удалось проверить файл. Попробуйте ещё раз.'}</p>}
           {preview.data.status === 'cancelled' && <p>Проверка отменена.</p>}
           {preview.data.report && <>
-            <p>Намерений: {preview.data.report.counts.intents || 0} · сущностей: {preview.data.report.counts.entities || 0} · примеров: {preview.data.report.counts.examples || 0}</p>
+            <p>Намерений: {preview.data.report.counts.intents || 0}, сущностей: {preview.data.report.counts.entities || 0}, примеров: {preview.data.report.counts.examples || 0}</p>
             {Object.entries(preview.data.report.new_codes).map(([kind, codes]) => !!codes.length && <p key={`new-${kind}`}>Новые {fields[kind] || kind}: {codes.join(', ')}</p>)}
             {Object.entries(preview.data.report.existing_codes).map(([kind, codes]) => !!codes.length && <p key={`existing-${kind}`}>Уже существуют {fields[kind] || kind}: {codes.join(', ')}</p>)}
             {preview.data.report.codes_truncated && <p className="field-help">Показаны первые 1000 кодов каждой группы.</p>}

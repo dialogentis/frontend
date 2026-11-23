@@ -12,10 +12,19 @@ page.on('pageerror', error => errors.push(error.message))
 const email = `browser-${randomUUID()}@example.com`
 const password = 'browser password 12345'
 const click = async text => {
-  for (const element of await page.$$('button, a')) {
-    if ((await element.evaluate(e => e.textContent)).trim() === text) { await element.click(); return }
+  const control = await page.waitForFunction(name => [...document.querySelectorAll('button, a')].find(element => {
+    const title = element.getAttribute('aria-labelledby')
+    const label = (title && document.getElementById(title)?.textContent || element.textContent).trim()
+    return label === name && element.getClientRects().length > 0 && !element.matches(':disabled')
+      && getComputedStyle(element).visibility === 'visible'
+  }), { timeout: 10000 }, text)
+  try {
+    const tab = await control.evaluate(element => element.id.startsWith('agent-tab-') ? element.id : null)
+    await control.asElement().click()
+    if (tab) await page.waitForFunction(id => document.getElementById(id)?.getAttribute('aria-selected') === 'true', {}, tab)
+  } finally {
+    await control.dispose()
   }
-  throw new Error(`Missing action: ${text}`)
 }
 const contains = text => page.waitForFunction(value => document.body.innerText.includes(value), {}, text)
 const mailLink = async (subject, recipient = email) => {

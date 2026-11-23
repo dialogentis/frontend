@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { ChevronRight, Search, X } from 'lucide-react'
@@ -38,6 +38,7 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
   const [phrase, setPhrase] = useState('')
   const [submitted, setSubmitted] = useState('')
   const selected = params.get('dialogue')
+  const selectedTrigger = useRef<HTMLButtonElement | null>(null)
   const path = { org_id: orgId }
   const settings = useQuery({
     queryKey: ['organization-settings', orgId], staleTime: 0,
@@ -139,7 +140,7 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
           </p>}
           <ul className="history-list">{items.map(item => <li key={item.id}>
             <button type="button" className="history-list-item" aria-pressed={item.id === selected}
-              onClick={() => setParams({ dialogue: item.id })}>
+              onClick={event => { selectedTrigger.current = event.currentTarget; setParams({ dialogue: item.id }) }}>
               <span><strong>{name(item.agent_id)}</strong><small>{channels[item.channel_type]} · {formatDate(item.created_at)}</small></span>
               <span>{statuses[item.status]}</span><ChevronRight size={16}/>
             </button>
@@ -148,7 +149,10 @@ export function ConversationHistory({ orgId }: { orgId: string }) {
             onClick={() => void dialogues.fetchNextPage()}>{text ? 'Продолжить поиск' : 'Показать ещё диалоги'}</button>}
         </div>
         {selected && <DialogueDetail key={selected} orgId={orgId} id={selected}
-          name={name} close={() => setParams({})}/>}
+          name={name} close={() => {
+            setParams({})
+            requestAnimationFrame(() => selectedTrigger.current?.focus())
+          }}/>}
       </div>}
   </section>
 }
@@ -160,6 +164,13 @@ function Retry({ message, retry }: { message: string; retry: () => void }) {
 function DialogueDetail({ orgId, id, name, close }: { orgId: string; id: string; name: (id: string) => string; close: () => void }) {
   const path = { org_id: orgId, conversation_id: id }
   const [trace, setTrace] = useState(false)
+  const pane = useRef<HTMLElement>(null)
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (!matchMedia('(max-width: 820px)').matches) return
+    heading.current?.focus({ preventScroll: true })
+    pane.current?.scrollIntoView({ block: 'start' })
+  }, [id])
   const detail = useQuery({
     queryKey: ['history-dialogue', orgId, id],
     staleTime: 0, gcTime: 0,
@@ -199,8 +210,8 @@ function DialogueDetail({ orgId, id, name, close }: { orgId: string; id: string;
   const row = detail.isSuccess ? detail.data : undefined
   const messageItems = messages.data?.pages.flatMap(page => page.items) ?? []
   const eventItems = events.data?.pages.flatMap(page => page.items) ?? []
-  return <aside className="history-pane" aria-label="Диалог">
-    <div className="section-heading"><div><h2>{row ? name(row.agent_id) : 'Диалог'}</h2>
+  return <aside ref={pane} className="history-pane" aria-label="Диалог">
+    <div className="section-heading"><div><h2 ref={heading} tabIndex={-1}>{row ? name(row.agent_id) : 'Диалог'}</h2>
       {row && <p>{channels[row.channel_type]} · {statuses[row.status]}</p>}</div>
       <button type="button" className="button icon-button" aria-label="Закрыть диалог" onClick={close}><X size={18}/></button>
     </div>

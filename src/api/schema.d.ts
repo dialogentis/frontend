@@ -11545,7 +11545,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MessageView"];
+                    "application/json": components["schemas"]["WidgetSession"];
                 };
             };
             /** @description Bad Request */
