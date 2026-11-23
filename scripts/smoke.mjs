@@ -92,6 +92,7 @@ try {
   await page.goto(`${base}/app/organizations`, { waitUntil: 'networkidle0' })
   await page.waitForFunction(() => location.pathname === '/login')
   await click('Зарегистрироваться')
+  await page.waitForSelector('[name="password"][autocomplete="new-password"]', { visible: true })
   await page.type('[name="email"]', email)
   await page.type('[name="password"]', password)
   await click('Создать аккаунт')

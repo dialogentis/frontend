@@ -82,13 +82,23 @@ export async function verifyLargeGraph(page, click) {
   await page.waitForSelector('.react-flow__node.draggable')
   await page.$eval('.draft-canvas', element => element.scrollIntoView({ block: 'center' }))
   const viewport = '.react-flow__viewport'
-  const interactiveStart = await page.evaluate(() => performance.now())
-  const before = await page.$eval(viewport, element => element.style.transform)
-  const zoom = await page.$('.react-flow__controls-zoomin')
+  const zoom = await page.waitForSelector(
+    '.react-flow__controls-zoomin:not(:disabled), .react-flow__controls-zoomout:not(:disabled)',
+    { visible: true },
+  )
   assert.ok(zoom)
-  await zoom.click()
-  await page.waitForFunction((selector, original) =>
-    document.querySelector(selector)?.style.transform !== original, {}, viewport, before)
+  const direction = await zoom.evaluate(button => {
+    button.focus({ preventScroll: true })
+    return button.classList.contains('react-flow__controls-zoomin') ? 1 : -1
+  })
+  await zoom.dispose()
+  const interactiveStart = await page.evaluate(() => performance.now())
+  const before = await page.$eval(viewport, element => new DOMMatrix(getComputedStyle(element).transform).a)
+  await page.keyboard.press('Enter')
+  await page.waitForFunction((selector, scale, direction) => {
+    const element = document.querySelector(selector)
+    return element && direction * (new DOMMatrix(getComputedStyle(element).transform).a - scale) > 0
+  }, {}, viewport, before, direction)
   const visible = await page.evaluate(() => {
     const canvas = document.querySelector('.draft-canvas').getBoundingClientRect()
     for (const node of document.querySelectorAll('.react-flow__node-condition.draggable')) {
