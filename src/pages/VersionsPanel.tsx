@@ -10,7 +10,7 @@ import { ReleasePanel } from './ReleasePanel'
 type Version = components['schemas']['VersionView']
 type Role = components['schemas']['OrganizationView']['role']
 type Pending = { revision: number; key: string }
-const labels: Record<Version['status'], string> = { building: 'Подготовка', ready: 'Готова', failed: 'Ошибка', cancelled: 'Отменено' }
+const labels: Record<Version['status'], string> = { building: 'Подготовка', ready: 'Готова', failed: 'Ошибка', cancelled: 'Отменено', obsolete: 'Устарела' }
 const stages: Record<NonNullable<Version['stage']>, string> = { validation: 'Проверка сценария', packaging: 'Сохранение снимка' }
 const failures: Record<string, string> = {
   worker_lost: 'Подготовка прервана. Запустите её снова.',
@@ -36,7 +36,7 @@ export function VersionsPanel({ orgId, agentId, agent, userId, role, revision, e
     refetchIntervalInBackground: false, refetchOnWindowFocus: true,
   })
   const items = versions.data?.pages.flatMap(page => page.items) || []
-  const selected = items.find(item => item.id === selectedId) || items[0]
+  const selected = items.find(item => item.id === selectedId) || items.find(item => item.status !== 'obsolete') || items[0]
   const refresh = () => cache.invalidateQueries({ queryKey: ['agent-versions', orgId, agentId] })
   const start = async () => {
     const request = pending || { revision, key: crypto.randomUUID() }
@@ -76,6 +76,7 @@ export function VersionsPanel({ orgId, agentId, agent, userId, role, revision, e
         {selected.status === 'building' && <p role="status">{selected.cancel_requested ? 'Отменяем подготовку…' : selected.job_status === 'queued' ? 'Ожидает очереди' : selected.stage ? stages[selected.stage] : 'Подготовка версии…'}</p>}
         {selected.status === 'failed' && <p role="alert" className="auth-error">{failures[selected.error_code || ''] || 'Не удалось подготовить версию. Проверьте данные и повторите попытку.'}</p>}
         {selected.status === 'cancelled' && <p>Подготовка отменена.</p>}
+        {selected.status === 'obsolete' && <p className="field-help">Эта версия собрана для прежнего движка. Для тестового чата и публикации подготовьте новую версию из черновика.</p>}
         {selected.llm_model && <p className="field-help">Языковая модель · {selected.llm_model}</p>}
         {!!selected.dataset_warnings.length && <details><summary>Предупреждения данных: {selected.dataset_warnings.length}{selected.warnings_truncated ? '+' : ''}</summary>{selected.dataset_warnings.map((item, index) => <p className="field-help" key={`${item.code}-${index}`}>{item.message}</p>)}</details>}
         {agent && <ReleasePanel agent={agent} version={selected} versions={items} canPublish={role === 'owner' || role === 'admin'} saved={enabled}/>}

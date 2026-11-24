@@ -3497,6 +3497,8 @@ export interface components {
             /** Source Revision */
             source_revision: number;
         };
+        /** @enum {string} */
+        VersionStatus: "building" | "ready" | "failed" | "cancelled" | "obsolete";
         /** VersionView */
         VersionView: {
             /**
@@ -3513,11 +3515,7 @@ export interface components {
             number: number;
             /** Source Revision */
             source_revision: number;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "building" | "ready" | "failed" | "cancelled";
+            status: components["schemas"]["VersionStatus"];
             /**
              * Job Status
              * @enum {string}

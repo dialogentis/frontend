@@ -40,6 +40,9 @@ export function ReleasePanel({ agent, version, versions, canPublish, saved }: {
   })
   const items = history.data?.pages.flatMap(page => page.items) ?? []
   const current = items.find(item => item.id === agent.current_release_id)
+  const obsolete = (release: Release) => versions.some(
+    item => item.id === release.root_version_id && item.status === 'obsolete',
+  )
   const versionName = (id: string) => {
     const item = versions.find(candidate => candidate.id === id)
     return item ? `Версия ${item.number}` : `Версия ${id.slice(0, 8)}`
@@ -72,7 +75,7 @@ export function ReleasePanel({ agent, version, versions, canPublish, saved }: {
   return <section className="release-panel" aria-label="Публикации">
     <div className="section-heading"><div>
       <h3>Публикации</h3>
-      <p>{current ? `Опубликована: ${versionName(current.root_version_id)}` : agent.current_release_id ? 'Есть активная публикация' : 'Пока нет опубликованной версии'}</p>
+      <p>{current ? `${obsolete(current) ? 'Публикация требует обновления' : 'Опубликована'} · ${versionName(current.root_version_id)}` : agent.current_release_id ? 'Есть активная публикация' : 'Пока нет опубликованной версии'}</p>
     </div></div>
     {canPublish && !saved && <p className="field-help">Дождитесь сохранения черновика.</p>}
     {error && <p role="alert" className="auth-error">{error}</p>}
@@ -93,11 +96,11 @@ export function ReleasePanel({ agent, version, versions, canPublish, saved }: {
     {history.isError && <p role="alert">Не удалось загрузить историю. <button type="button" className="button button-text" onClick={() => void history.refetch()}>Повторить</button></p>}
     {!!items.length && <ul className="release-list">{items.map(item => <li key={item.id} className="release-row">
       <div>
-        <strong>{versionName(item.root_version_id)}{item.id === agent.current_release_id ? ' · текущая публикация' : ''}</strong>
+        <strong>{versionName(item.root_version_id)}{item.id === agent.current_release_id ? ' · текущая публикация' : ''}{obsolete(item) ? ' · устарела' : ''}</strong>
         <p className="field-help">{fullDate.format(new Date(item.created_at))} · закреплено версий: {item.dependency_manifest.length}</p>
         {item.reason && <p>{item.reason}</p>}
       </div>
-      {canPublish && item.id !== agent.current_release_id && <button type="button" className="button button-quiet" disabled={!allowed} onClick={() => { setRollback(item); setReason(''); setError('') }}>Откатить</button>}
+      {canPublish && item.id !== agent.current_release_id && !obsolete(item) && <button type="button" className="button button-quiet" disabled={!allowed} onClick={() => { setRollback(item); setReason(''); setError('') }}>Откатить</button>}
     </li>)}</ul>}
     {history.hasNextPage && <button type="button" className="button button-quiet" disabled={history.isFetchingNextPage} onClick={() => void history.fetchNextPage()}>Показать ещё публикации</button>}
     {rollback && <form className="release-form" onSubmit={(event: FormEvent) => {
