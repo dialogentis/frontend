@@ -375,8 +375,7 @@ main { min-width: 0; }
 .checkbox-label > input { margin-top: var(--space-2xs); }
 .checkbox-label strong { display: block; font-size: var(--text-data); font-weight: 500; }
 .checkbox-label small { display: block; color: var(--color-muted); font-size: 11px; margin-top: var(--space-2xs); }
-.organization-deletion { display: grid; justify-items: start; gap: var(--space-xs); margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--color-rule); }
-.organization-deletion h2 { font-size: var(--text-md); }
+.organization-deletion { margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--color-rule); }
 .organization-deletion-form { margin-top: var(--space-md); }
 .overview-register, .analytics-register { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--color-rule); border-radius: var(--radius-card); margin-bottom: var(--space-lg); }
 .overview-register > div, .analytics-register > div { padding: var(--space-md); border-right: 1px solid var(--color-rule); }

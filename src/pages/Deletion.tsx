@@ -26,8 +26,7 @@ export function DeletionPanel({ orgId, name }: { orgId: string; name: string }) 
     } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось начать удаление') }
     finally { setBusy(false) }
   }
-  return <section className="organization-deletion">
-    <h2>Удаление пространства</h2>
+  return <div className="organization-deletion">
     <button type="button" className="button button-quiet danger-button" aria-haspopup="dialog"
       onClick={() => dialog.current?.showModal()}>Удалить пространство</button>
     <dialog ref={dialog} className="standard-dialog" aria-labelledby="organization-deletion-title"
@@ -47,7 +46,7 @@ export function DeletionPanel({ orgId, name }: { orgId: string; name: string }) 
         </div>
       </form>
     </dialog>
-  </section>
+  </div>
 }
 
 export function DeletionStatusPage() {
