@@ -1,22 +1,20 @@
 import { useState, type FormEvent } from 'react'
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
 
 type Agent = components['schemas']['AgentView']
+type AgentPage = components['schemas']['CursorPage_AgentView_']
 type Version = components['schemas']['VersionView']
-type Report = components['schemas']['ReportView']
 type Release = components['schemas']['ReleaseView']
 type Path = { org_id: string; agent_id: string }
 const fullDate = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })
-const percent = new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 1 })
-const score = (value: number | null) => value === null ? 'Нет данных' : percent.format(value)
 const message = (error: unknown) => error instanceof ApiError
   ? error.details.map(detail => detail.message).filter(item => typeof item === 'string').slice(0, 3).join(' ') || error.message
   : 'Операция не подтверждена. Проверьте текущую публикацию.'
 
-export function ReleasePanel({ agent, version, versions, report, canPublish, saved }: {
-  agent: Agent; version: Version | undefined; versions: Version[]; report: Report | undefined
+export function ReleasePanel({ agent, version, versions, canPublish, saved }: {
+  agent: Agent; version: Version | undefined; versions: Version[]
   canPublish: boolean; saved: boolean
 }) {
   const cache = useQueryClient()
@@ -46,9 +44,19 @@ export function ReleasePanel({ agent, version, versions, report, canPublish, sav
     const item = versions.find(candidate => candidate.id === id)
     return item ? `Версия ${item.number}` : `Версия ${id.slice(0, 8)}`
   }
-  const run = async (operation: () => Promise<void>, success: string) => {
+  const run = async (operation: () => Promise<string>, success: string) => {
     setBusy(true); setError(''); setNotice('')
-    try { await operation(); setNotice(success); setRollback(null); setReason('') }
+    try {
+      const releaseId = await operation()
+      cache.setQueriesData<InfiniteData<AgentPage>>({ queryKey: ['agents', path.org_id] }, data => data && ({
+        ...data,
+        pages: data.pages.map(page => ({
+          ...page,
+          items: page.items.map(item => item.id === agent.id ? { ...item, current_release_id: releaseId } : item),
+        })),
+      }))
+      setNotice(success); setRollback(null); setReason('')
+    }
     catch (error) { setError(message(error)) }
     finally {
       await Promise.all([
@@ -78,9 +86,9 @@ export function ReleasePanel({ agent, version, versions, report, canPublish, sav
             signal: AbortSignal.timeout(30_000),
           })
           check(result.response, result.error)
+          if (!result.data) throw new Error('Некорректный ответ сервера')
+          return result.data.id
         }, `Версия ${version.number} опубликована.`)}/>}
-    {version?.status === 'ready' && report && versions.some(item => item.status === 'ready' && item.id !== version.id)
-      && <VersionComparison key={version.id} path={path} version={version} versions={versions} report={report}/>}
     {history.isPending && <p role="status">Загрузка публикаций…</p>}
     {history.isError && <p role="alert">Не удалось загрузить историю. <button type="button" className="button button-text" onClick={() => void history.refetch()}>Повторить</button></p>}
     {!!items.length && <ul className="release-list">{items.map(item => <li key={item.id} className="release-row">
@@ -101,6 +109,8 @@ export function ReleasePanel({ agent, version, versions, report, canPublish, sav
           signal: AbortSignal.timeout(15_000),
         })
         check(result.response, result.error)
+        if (!result.data) throw new Error('Некорректный ответ сервера')
+        return result.data.current_release_id
       }, `Возвращена публикация «${versionName(rollback.root_version_id)}».`)
     }}>
       <p>Вернуть публикацию «{versionName(rollback.root_version_id)}» для новых диалогов?</p>
@@ -153,39 +163,4 @@ function PublishVersion({ path, version, enabled, publish }: {
       </form>}
     </>}
   </div>
-}
-
-function VersionComparison({ path, version, versions, report }: {
-  path: Path; version: Version; versions: Version[]; report: Report
-}) {
-  const [baselineId, setBaselineId] = useState('')
-  const baseline = versions.find(item => item.id === baselineId)
-  const comparison = useQuery({
-    queryKey: ['version-report', path.org_id, path.agent_id, baselineId], enabled: !!baseline,
-    queryFn: async ({ signal }) => {
-      const result = await api.GET('/api/v1/organizations/{org_id}/agents/{agent_id}/versions/{version_id}/report', {
-        params: { path: { ...path, version_id: baselineId } }, signal,
-      })
-      check(result.response, result.error)
-      if (!result.data) throw new Error('Некорректный ответ сервера')
-      return result.data
-    },
-  })
-  return <details className="release-compare">
-    <summary>Сравнить версии</summary>
-    <label className="field-label">С чем сравнить версию {version.number}<select value={baselineId} onChange={event => setBaselineId(event.target.value)}>
-      <option value="">Выберите версию</option>
-      {versions.filter(item => item.status === 'ready' && item.id !== version.id).map(item => <option key={item.id} value={item.id}>Версия {item.number}</option>)}
-    </select></label>
-    {baseline && comparison.isPending && <p role="status">Загрузка отчёта…</p>}
-    {comparison.isError && <p role="alert">Не удалось загрузить отчёт.</p>}
-    {baseline && comparison.data && <div className="training-table-scroll"><table className="training-table">
-      <thead><tr><th>Метрика</th><th>Версия {baseline.number}</th><th>Версия {version.number}</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">F1 намерений</th><td>{score(comparison.data.intents.macro_f1)}</td><td>{score(report.intents.macro_f1)}</td></tr>
-        <tr><th scope="row">F1 сущностей</th><td>{score(comparison.data.entities.f1)}</td><td>{score(report.entities.f1)}</td></tr>
-        <tr><th scope="row">Тестовые фразы</th><td>{comparison.data.intents.test_count}</td><td>{report.intents.test_count}</td></tr>
-      </tbody>
-    </table></div>}
-  </details>
 }

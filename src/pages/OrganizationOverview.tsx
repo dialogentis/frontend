@@ -10,7 +10,7 @@ import { analyticsPeriod } from './analyticsPeriod'
 const statuses = { active: 'Активные', failed: 'С ошибкой', succeeded: 'Завершённые', cancelled: 'Отменённые', all: 'Все состояния' } as const
 type JobFilter = keyof typeof statuses
 const kinds: Record<string, string> = {
-  'agent.training': 'Обучение агента', 'dataset.import': 'Импорт данных', 'dataset.export': 'Экспорт агента',
+  'agent.training': 'Подготовка версии агента', 'dataset.import': 'Импорт данных', 'dataset.export': 'Экспорт агента',
   'history.export': 'Выгрузка истории', 'history.deletion': 'Удаление истории', 'organization.deletion': 'Удаление пространства',
 }
 const phases = { dispatch_wait: 'Ожидает отправки в RabbitMQ', worker_wait: 'Ожидает рабочий процесс', retry_wait: 'Запланирована повторная попытка' }
@@ -93,7 +93,7 @@ export function OrganizationOverview({ orgId, canAudit }: { orgId: string; canAu
       {queue && <dl className="overview-broker" aria-label="Состояние очередей">
         <div><dt>RabbitMQ</dt><dd>{queue.broker.status === 'available' ? 'Доступен' : 'Недоступен'}</dd></div>
         <div><dt>Рабочий процесс заданий</dt><dd>{workers[queue.broker.normal_worker]}</dd></div>
-        <div><dt>Рабочий процесс обучения</dt><dd>{workers[queue.broker.training_worker]}</dd></div>
+        <div><dt>Подготовка версий</dt><dd>{workers[queue.broker.training_worker]}</dd></div>
       </dl>}
       {queue?.broker.status === 'unavailable' && <p role="status">Задания сохраняются и ждут подключения RabbitMQ.</p>}
       {jobs.isPending && <p role="status">Загрузка заданий…</p>}

@@ -10,7 +10,7 @@ type Draft = components['schemas']['DraftView']
 type Config = components['schemas']['DraftConfig']
 type Entity = components['schemas']['Entity']
 type DictionaryValue = components['schemas']['DictionaryValue']
-const methods: Record<Entity['method'], string> = { learned: 'По разметке', dictionary: 'Словарь', regex: 'Регулярное выражение' }
+const methods: Record<Entity['method'], string> = { learned: 'Языковая модель', dictionary: 'Словарь', regex: 'Регулярное выражение' }
 const valueTypes: Record<Entity['value_type'], string> = { string: 'Строка', integer: 'Целое число', number: 'Число', boolean: 'Да / нет', date: 'Дата' }
 
 export function EntityPanel({ orgId, agentId, draft, editable, previewEnabled, update }: { orgId: string; agentId: string; draft: Draft; editable: boolean; previewEnabled: boolean; update: (mutate: (config: Config) => Config) => void }) {

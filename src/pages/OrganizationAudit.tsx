@@ -22,7 +22,7 @@ const actions: Record<string, string> = {
   'agent.archived': 'Агент отправлен в архив',
   'agent.restored': 'Агент восстановлен',
   'agent.lease_revoked': 'Доступ к редактированию отозван',
-  'agent.training_requested': 'Запущено обучение',
+  'agent.training_requested': 'Запущена подготовка версии',
   'agent.import_requested': 'Запрошен импорт',
   'agent.import_applied': 'Импорт применён',
   'agent.export_requested': 'Запрошен экспорт агента',
