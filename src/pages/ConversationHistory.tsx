@@ -13,7 +13,7 @@ const statuses: Record<Dialogue['status'], string> = {
   waiting_input: 'Ожидает сообщения', completed: 'Завершён', failed: 'Ошибка', expired: 'Истёк',
 }
 const labels: Record<string, string> = {
-  transition: 'Переход', fallback: 'Запрос не распознан', wait: 'Ожидание ввода', complete: 'Завершение',
+  transition: 'Переход', fallback: 'Запрос не распознан', generated_reply: 'Свободный ответ', wait: 'Ожидание ввода', complete: 'Завершение',
   error: 'Ошибка', handoff: 'Передача агенту', returned: 'Возврат', slot_set: 'Присваивание',
   slot_filled: 'Параметр получен', fallback_limit: 'Лимит попыток',
   handoff_history: 'Передана история', handoff_history_truncated: 'Передана часть истории',
