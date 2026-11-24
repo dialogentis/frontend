@@ -1,7 +1,7 @@
 /* Hallmark · component: workspace switcher · genre: modern-minimal · theme: Terrazzo · states: default hover focus active selected expanded · v2.0.0 */
 /* Hallmark · critique: retained palette; replaced OS popup with aligned, keyboard-accessible options */
 /* Hallmark · waive 39b · compound workspace identity with two-line name · full names remain readable instead of being truncated to a single-line button */
-.workspace-switcher { position: relative; margin-bottom: var(--space-lg); min-width: 0; }
+.workspace-switcher { position: relative; margin-bottom: var(--space-md); min-width: 0; }
 .workspace-trigger { display: flex; align-items: center; gap: var(--space-xs); width: 100%; padding: var(--space-sm); background: transparent; border: 1px solid var(--color-rule); border-radius: var(--radius-control); text-align: left; color: var(--color-ink); }
 .workspace-trigger:hover, .workspace-trigger[aria-expanded="true"] { background: var(--color-paper-2); }
 .workspace-trigger:focus-visible, .workspace-option:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }

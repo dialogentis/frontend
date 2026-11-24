@@ -930,7 +930,7 @@ try {
   await page.waitForSelector('[aria-label="В архив Консультант"]')
   await page.click('[aria-label="В архив Консультант"]')
   await click('Архив')
-  await contains('Консультант')
+  await page.waitForSelector('[aria-label="Восстановить Консультант"]', { visible: true })
   await page.click('[aria-label="Восстановить Консультант"]')
   await click('Активные')
   await contains('Консультант')

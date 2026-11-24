@@ -305,9 +305,23 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
   }))
   const add = (type: 'say' | 'end' | 'ask_slot' | 'set_slot' | 'condition' | 'http_action' | 'handoff' | 'return') => edit(config => config.flow.nodes.length >= 300 ? config : ({ ...config, flow: { ...config.flow, nodes: [...config.flow.nodes, { id: crypto.randomUUID(), type, config: type === 'say' ? { text: '' } : type === 'ask_slot' ? { slot_id: null, prompt: '', entity_id: null, max_attempts: 3, checks: [] } : type === 'set_slot' ? { slot_id: null, operation: 'set', source: 'constant', source_slot_id: null, value: null } : type === 'condition' ? { branches: [] } : type === 'http_action' ? { integration_id: null, method: 'GET', path: '', query: {}, body: {}, response_mapping: {}, mock_outcome: 'success', mock_response: {} } : {}, position: { x: 200, y: 200 + config.flow.nodes.length * 30 } }] } }))
   return <div className="workspace-draft">
-    <div className="page-heading"><div><Link to={`/app/o/${orgId}`}>← К агентам</Link><h1>{agent.data?.name}</h1><p>Версия черновика {draft.revision}</p></div><div className="draft-actions">{!lease && role !== 'viewer' && !dirty && !(narrow && section === 'flow') && <button className="button button-primary" disabled={busy} onClick={() => void begin()}>Начать редактирование</button>}{role !== 'viewer' && <ExportPanel key={`${orgId}:${agentId}`} orgId={orgId} agentId={agentId} enabled={!dirty}/>} {role !== 'viewer' && dirty && <button className="button button-quiet" onClick={download}>Сохранить локальную копию</button>}</div></div>
-    <p role="status" className="field-help">{importing ? 'Применение импорта…' : state === 'lost' ? 'Блокировка утрачена' : state === 'conflict' ? 'Конфликт версий' : lease ? ({ saved: 'Сохранено', dirty: 'Есть несохранённые изменения', saving: 'Сохранение…', offline: 'Сохранение не подтверждено', lost: 'Блокировка утрачена', conflict: 'Конфликт версий' }[state]) : draft.lease ? `Редактирует ${draft.lease.holder_name}` : 'Режим просмотра'}</p>
-    {narrow && section === 'flow' && <p className="field-help">Редактирование графа доступно на компьютере. Данные агента можно изменить на других вкладках.</p>}{error && <p role="alert" className="auth-error">{error}</p>}{state === 'offline' && lease && <button className="button button-quiet" disabled={busy} onClick={() => void retry()}>Проверить сохранение</button>}
+    <div className="page-heading">
+      <div>
+        <Link to={`/app/o/${orgId}`}>← К агентам</Link>
+        <h1>{agent.data?.name}</h1>
+        <div className="draft-meta">
+          <span>Версия черновика {draft.revision}</span>
+          <span role="status">{importing ? 'Применение импорта…' : state === 'lost' ? 'Блокировка утрачена' : state === 'conflict' ? 'Конфликт версий' : lease ? ({ saved: 'Сохранено', dirty: 'Есть несохранённые изменения', saving: 'Сохранение…', offline: 'Сохранение не подтверждено', lost: 'Блокировка утрачена', conflict: 'Конфликт версий' }[state]) : draft.lease ? `Редактирует ${draft.lease.holder_name}` : 'Режим просмотра'}</span>
+        </div>
+      </div>
+      <div className="draft-actions">
+        {!lease && role !== 'viewer' && !dirty && !(narrow && section === 'flow') && <button className="button button-primary" disabled={busy} onClick={() => void begin()}>Начать редактирование</button>}
+        {role !== 'viewer' && <ExportPanel key={`${orgId}:${agentId}`} orgId={orgId} agentId={agentId} enabled={!dirty}/>}
+        {role !== 'viewer' && dirty && <button className="button button-quiet" onClick={download}>Сохранить локальную копию</button>}
+      </div>
+    </div>
+    {error && <p role="alert" className="auth-error">{error}</p>}
+    {state === 'offline' && lease && <button className="button button-quiet draft-save-retry" disabled={busy} onClick={() => void retry()}>Проверить сохранение</button>}
     <div className="filter-tabs draft-sections" role="tablist" aria-label="Раздел агента">
       {tabs.map(([name, label], index) => <button type="button" role="tab" key={name} id={`agent-tab-${name}`}
         aria-controls="agent-section" aria-selected={section === name} tabIndex={section === name ? 0 : -1}
@@ -323,6 +337,7 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
         }}>{label}</button>)}
     </div>
     <div id="agent-section" role="tabpanel" aria-labelledby={`agent-tab-${section}`}>
+    {narrow && section === 'flow' && <p className="field-help draft-mobile-note">Редактирование графа доступно на компьютере. Данные агента можно изменить на других вкладках.</p>}
     {section === 'channels' ? managesChannels && <div className="agent-channels" key={agentId}>
       <WidgetChannels orgId={orgId} agentId={agentId} archived={agent.data?.status === 'archived'} published={!!agent.data?.current_release_id}/>
       <AgentApiKeys orgId={orgId} agentId={agentId} archived={agent.data?.status === 'archived'}/>
