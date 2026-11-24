@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AudioLines, Boxes, LayoutDashboard, LogOut, MessageSquare, Moon, Network, PanelLeftClose, PanelLeftOpen, Plus, Settings2, ShieldCheck, Sun, Users } from 'lucide-react'
+import { AudioLines, Boxes, ChevronRight, LayoutDashboard, LogOut, MessageSquare, Moon, Network, PanelLeftClose, PanelLeftOpen, Plus, Settings2, ShieldCheck, Sun, UserRound, Users } from 'lucide-react'
 import { api, check } from '../api'
 import { useSession } from '../Session'
 import { WorkspaceSwitcher } from '../components/WorkspaceSwitcher'
@@ -55,6 +55,7 @@ export function OrganizationsPage() {
 export function WorkspacePage() {
   const { orgId, agentId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const location = useLocation(); const cache = useQueryClient(); const [error, setError] = useState(''); const [editorDirty, setEditorDirty] = useState(false); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
   const previousOrg = useRef(orgId)
+  const profile = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const previous = previousOrg.current
     previousOrg.current = orgId
@@ -88,6 +89,8 @@ export function WorkspacePage() {
   const overviewPage = location.pathname.endsWith('/overview')
   const canAudit = current.role === 'owner' || current.role === 'admin'
   const root = `/app/o/${current.id}`
+  const switcher = { value: current.id, organizations: options, onChange: (id: string) => navigate(`/app/o/${id}`) }
+  const openProfile = () => profile.current?.showModal()
   const links = [
     { suffix: '/overview', label: 'Обзор', icon: LayoutDashboard, active: overviewPage },
     { suffix: '', label: 'Агенты', icon: Boxes, active: !membersPage && !settingsPage && !integrationsPage &&
@@ -101,28 +104,50 @@ export function WorkspacePage() {
   ]
   return <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}><aside id="workspace-sidebar" className="sidebar workspace-real-sidebar">
     <Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link>
-    <WorkspaceSwitcher value={current.id} organizations={options} onChange={id => navigate(`/app/o/${id}`)}/>
+    <WorkspaceSwitcher {...switcher}/>
     <nav className="primary-nav" aria-label="Основная навигация">
       {links.map(({ suffix, label, icon: Icon, active }) => <Link key={suffix} to={root + suffix}
         className={`nav-link ${active ? 'nav-link-active' : ''}`} aria-current={active ? 'page' : undefined}>
         <Icon size={18} aria-hidden="true"/>{label}
       </Link>)}
-      <Link className="nav-link" to="/app/organizations">Все пространства</Link>
     </nav>
-    <div className="sidebar-bottom"><div className="user-profile"><span className="user-avatar">Вы</span><span><strong>{session.user.email}</strong><small>{role}</small></span></div></div>
+    <div className="sidebar-bottom">
+      <button type="button" className="user-profile" aria-label="Открыть профиль" aria-haspopup="dialog" title="Профиль" onClick={openProfile}>
+        <span className="user-avatar" aria-hidden="true">Вы</span>
+        <span><strong>{session.user.email}</strong><small>{role}</small></span>
+        <ChevronRight size={15} aria-hidden="true"/>
+      </button>
+    </div>
   </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs">
     <button type="button" className="button icon-button desktop-sidebar-toggle" aria-label={sidebarLabel} title={sidebarLabel} aria-controls="workspace-sidebar" aria-expanded={!sidebarCollapsed} onClick={toggleSidebar}>
       {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true"/> : <PanelLeftClose size={18} aria-hidden="true"/>}
     </button>
-    <Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span><Link className="workspace-overview-link" to={`${root}/overview`} title="Обзор пространства">{current.name}</Link></div><div className="topbar-actions">
+    <Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span>
+    <WorkspaceSwitcher {...switcher} compact/>
+    <Link className="workspace-overview-link" to={`${root}/overview`} title="Обзор пространства" aria-label={`Обзор пространства: ${current.name}`}><span>{current.name}</span><LayoutDashboard size={17} aria-hidden="true"/></Link>
+    </div><div className="topbar-actions">
     <Link className="button button-text workspace-mobile-members" to={membersPage ? root : `${root}/members`}>{membersPage ? 'Агенты' : 'Участники'}</Link>
     <Link className="button icon-button workspace-mobile-members" aria-label="Настройки пространства" to={`${root}/settings`}><Settings2 size={18}/></Link>
     <Link className="button icon-button workspace-mobile-members" aria-label="Диалоги" to={`${root}/conversations`}><MessageSquare size={18}/></Link>
     <Link className="button icon-button workspace-mobile-members" aria-label="Аналитика" to={`${root}/analytics`}><AudioLines size={18}/></Link>
     {canAudit && <Link className="button icon-button workspace-mobile-members" aria-label="Аудит" to={`${root}/audit`}><ShieldCheck size={18}/></Link>}
     <Link className="button icon-button workspace-mobile-members" aria-label="Интеграции" to={`${root}/integrations`}><Network size={18}/></Link>
+    <button type="button" className="button icon-button topbar-profile" aria-label="Открыть профиль" aria-haspopup="dialog" title="Профиль" onClick={openProfile}><UserRound size={18} aria-hidden="true"/></button>
     <button className="button icon-button" aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.mode = next ? 'dark' : 'light'; try { localStorage.setItem('dialogentis-mode', next ? 'dark' : 'light') } catch { /* preference is optional */ } }}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
-    <button className="button button-text" onClick={() => { if (!editorDirty || window.confirm('Есть несохранённые изменения. Выйти из аккаунта?')) void logout().then(() => navigate('/login')).catch(e => setError(e.message)) }}><LogOut size={16}/>Выйти</button></div></header><main className="standard-page">
+    <button className="button button-text" onClick={() => { if (!editorDirty || window.confirm('Есть несохранённые изменения. Выйти из аккаунта?')) void logout().then(() => navigate('/login')).catch(e => setError(e.message)) }}><LogOut size={16}/>Выйти</button></div></header>
+    <dialog ref={profile} className="standard-dialog account-profile-dialog" aria-labelledby="account-profile-title">
+      <h2 id="account-profile-title">Профиль</h2>
+      <dl className="account-details">
+        <div><dt>Электронная почта</dt><dd>{session.user.email}<span className="field-help">Подтверждена</span></dd></div>
+        <div><dt>Пространство</dt><dd>{current.name}</dd></div>
+        <div><dt>Роль</dt><dd>{role}</dd></div>
+      </dl>
+      <div className="dialog-actions">
+        <Link className="button button-quiet" to="/forgot-password" state={{ email: session.user.email }}>Восстановить пароль</Link>
+        <button type="button" className="button button-primary" autoFocus onClick={() => profile.current?.close()}>Закрыть</button>
+      </div>
+    </dialog>
+    <main className="standard-page">
     {error && <p role="alert" className="auth-error">{error}</p>}
     {overviewPage ? <Suspense fallback={<p role="status">Загрузка обзора…</p>}>
       <OrganizationOverview key={current.id} orgId={current.id} canAudit={canAudit}/>
