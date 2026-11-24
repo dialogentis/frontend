@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, check } from '../api'
 import type { components } from '../api/schema'
+import { DeletionPanel } from './Deletion'
 
 type Organization = components['schemas']['OrganizationView']
 
@@ -79,5 +80,6 @@ function SettingsForm({ initial, reload, saved, onSaved, onEdited }: { initial: 
         <button type="button" className="button button-primary" onClick={() => { confirmation.current?.close(); void save() }}>Подтвердить удаление данных</button>
       </div>
     </dialog>
+    {initial.role === 'owner' && <DeletionPanel orgId={initial.id} name={initial.name}/>}
   </section>
 }

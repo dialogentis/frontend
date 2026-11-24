@@ -235,7 +235,7 @@ try {
     assert.ok(await page.$eval(collapse, button => {
       const logo = button.previousElementSibling.getBoundingClientRect()
       const toggle = button.getBoundingClientRect()
-      return logo.right <= toggle.left && logo.top <= toggle.top && logo.bottom >= toggle.bottom
+      return toggle.left - logo.right >= 12 && logo.top <= toggle.top && logo.bottom >= toggle.bottom
     }))
     await page.focus(collapse)
     await page.keyboard.press('Enter')
@@ -1100,7 +1100,9 @@ try {
     await page.goto(`${workspace}/members`, { waitUntil: 'networkidle0' })
     await page.waitForSelector('input[type="email"]')
     assert.equal(await page.$('form.transfer-form'), null)
-    assert.ok(!(await page.evaluate(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Удалить пространство'))))
+    await page.goto(`${workspace}/settings`, { waitUntil: 'networkidle0' })
+    await page.waitForSelector('.organization-settings-form')
+    assert.equal(await page.$('.organization-deletion'), null)
     console.log('PASS: viewer can read, editor can create, admin can invite, and only owner can transfer ownership')
   } finally { await ownerContext.close() }
   await click('Выйти')
@@ -1132,9 +1134,24 @@ try {
   await page.goto(`${base}/app/o/${orgId}/members`, { waitUntil: 'networkidle0' })
   await contains(guestEmail)
   await contains('Владелец')
+  assert.equal(await page.$('.organization-deletion'), null)
+  await click('Настройки')
+  await page.waitForSelector('.organization-deletion')
+  const warning = '#organization-deletion-warning'
+  const dialog = 'dialog[aria-labelledby="organization-deletion-title"]'
+  await page.waitForSelector(warning, { hidden: true })
   await click('Удалить пространство')
-  await page.type('.reset-section input:not([type="password"])', 'Рабочая команда')
-  await page.type('.reset-section input[type="password"]', password)
+  await page.waitForSelector(warning, { visible: true })
+  assert.match(await page.$eval(warning, message => message.textContent), /Восстановить пространство через интерфейс нельзя/)
+  assert.equal(await page.$eval(`${dialog} button[type="submit"]`, button => button.disabled), true)
+  await page.type(`${dialog} input:not([type="password"])`, 'Рабочая команда')
+  await click('Отмена')
+  await page.waitForSelector(warning, { hidden: true })
+  await click('Удалить пространство')
+  await page.waitForSelector(warning, { visible: true })
+  assert.equal(await page.$eval(`${dialog} input:not([type="password"])`, input => input.value), '')
+  await page.type(`${dialog} input:not([type="password"])`, 'Рабочая команда')
+  await page.type(`${dialog} input[type="password"]`, password)
   await click('Подтвердить удаление')
   await page.waitForFunction(() => location.pathname.startsWith('/app/deletions/'))
   await contains('Пространство удалено')

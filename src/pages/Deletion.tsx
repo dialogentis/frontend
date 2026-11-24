@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, check } from '../api'
 import { AuthFrame } from './Auth'
 
 export function DeletionPanel({ orgId, name }: { orgId: string; name: string }) {
-  const [open, setOpen] = useState(false)
+  const dialog = useRef<HTMLDialogElement>(null)
   const [confirmation, setConfirmation] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -13,7 +13,9 @@ export function DeletionPanel({ orgId, name }: { orgId: string; name: string }) 
   const navigate = useNavigate()
   const cache = useQueryClient()
   const submit = async (event: React.FormEvent) => {
-    event.preventDefault(); setBusy(true); setError('')
+    event.preventDefault()
+    if (busy || confirmation !== name) return
+    setBusy(true); setError('')
     try {
       const result = await api.POST('/api/v1/organizations/{org_id}/deletion', { params: { path: { org_id: orgId } }, body: { password, confirmation_name: confirmation } })
       check(result.response, result.error)
@@ -24,8 +26,27 @@ export function DeletionPanel({ orgId, name }: { orgId: string; name: string }) 
     } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось начать удаление') }
     finally { setBusy(false) }
   }
-  return <section className="reset-section"><h2>Удаление пространства</h2><p>Все агенты и данные этого пространства будут удалены. Аккаунты участников и другие пространства сохранятся. Восстановить пространство через интерфейс нельзя.</p>
-    {!open ? <button className="button button-quiet danger-button" onClick={() => setOpen(true)}>Удалить пространство</button> : <form className="inline-create" onSubmit={submit}><p>Введите название «{name}» и пароль владельца.</p><label className="field-label">Название пространства<input value={confirmation} onChange={e => setConfirmation(e.target.value)} required autoComplete="off"/></label><label className="field-label">Ваш пароль<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={12} maxLength={128} autoComplete="current-password"/></label>{error && <p role="alert" className="auth-error">{error}</p>}<div className="auth-actions"><button className="button button-primary" disabled={busy || confirmation !== name}>Подтвердить удаление</button><button type="button" className="button button-quiet" disabled={busy} onClick={() => { setOpen(false); setPassword(''); setConfirmation(''); setError('') }}>Отмена</button></div></form>}
+  return <section className="organization-deletion">
+    <h2>Удаление пространства</h2>
+    <button type="button" className="button button-quiet danger-button" aria-haspopup="dialog"
+      onClick={() => dialog.current?.showModal()}>Удалить пространство</button>
+    <dialog ref={dialog} className="standard-dialog" aria-labelledby="organization-deletion-title"
+      aria-describedby="organization-deletion-warning"
+      onCancel={event => { if (busy) event.preventDefault() }}
+      onClose={() => { setConfirmation(''); setPassword(''); setError('') }}>
+      <h2 id="organization-deletion-title">Удалить пространство?</h2>
+      <p id="organization-deletion-warning">Все агенты и данные этого пространства будут удалены. Аккаунты участников и другие пространства сохранятся. Восстановить пространство через интерфейс нельзя.</p>
+      <p>Введите название «{name}» и пароль владельца.</p>
+      <form className="organization-deletion-form" onSubmit={submit}>
+        <label className="field-label">Название пространства<input value={confirmation} onChange={e => setConfirmation(e.target.value)} required autoComplete="off"/></label>
+        <label className="field-label">Ваш пароль<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={12} maxLength={128} autoComplete="current-password"/></label>
+        {error && <p role="alert" className="auth-error">{error}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="button button-quiet" autoFocus disabled={busy} onClick={() => dialog.current?.close()}>Отмена</button>
+          <button type="submit" className="button button-quiet danger-button" disabled={busy || confirmation !== name || !password}>Подтвердить удаление</button>
+        </div>
+      </form>
+    </dialog>
   </section>
 }
 

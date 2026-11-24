@@ -100,9 +100,9 @@ input:not([type="checkbox"], [type="radio"], [type="range"]), textarea, select, 
 .skip-link:focus-visible { transform: translateY(0); }
 .app-shell { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); max-width: var(--app-max-width); margin-inline: auto; min-height: 100dvh; background: var(--color-plate); }
 .sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; background: var(--color-paper); border-right: 1px solid var(--color-rule); padding: var(--space-md) var(--space-sm) 0; z-index: var(--z-sticky); min-width: 0; }
-.sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2xs); margin-bottom: var(--space-md); }
-.wordmark { display: flex; align-items: center; gap: var(--space-xs); padding-inline-start: var(--space-xs); height: 36px; font-weight: 700; letter-spacing: -.04em; font-size: 21px; }
-.brand-mark { display: flex; align-items: center; justify-content: center; width: 26px; height: 29px; background: var(--color-ink); color: var(--color-paper); font-size: 24px; line-height: 1; font-weight: 500; }
+.sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); margin-bottom: var(--space-md); }
+.wordmark { display: flex; align-items: center; gap: var(--space-control); padding-inline-start: var(--space-xs); height: 36px; font-weight: 700; letter-spacing: -.04em; font-size: 19px; }
+.brand-mark { flex-shrink: 0; width: 24px; height: 24px; }
 .brand-punctuation { color: var(--color-accent); margin-left: calc(-1 * var(--space-2xs)); }
 .org-switch { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-sm) var(--space-xs); margin-bottom: var(--space-lg); border: 1px solid var(--color-rule); background: var(--color-plate); min-width: 0; }
 .org-avatar { display: grid; place-items: center; width: 30px; height: 32px; flex-shrink: 0; background: var(--color-paper-2); font-size: var(--text-xs); font-weight: 500; }
@@ -375,10 +375,9 @@ main { min-width: 0; }
 .checkbox-label > input { margin-top: var(--space-2xs); }
 .checkbox-label strong { display: block; font-size: var(--text-data); font-weight: 500; }
 .checkbox-label small { display: block; color: var(--color-muted); font-size: 11px; margin-top: var(--space-2xs); }
-.reset-section { margin-top: var(--space-2xl); padding-top: var(--space-lg); border-top: 1px solid var(--color-rule); }
-.reset-section h2 { font-size: var(--text-md); }
-.reset-section p { color: var(--color-muted); font-size: var(--text-label); margin-block: var(--space-sm) var(--space-lg); }
-.reset-confirm { display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; font-size: var(--text-label); }
+.organization-deletion { display: grid; justify-items: start; gap: var(--space-xs); margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--color-rule); }
+.organization-deletion h2 { font-size: var(--text-md); }
+.organization-deletion-form { margin-top: var(--space-md); }
 .overview-register, .analytics-register { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--color-rule); border-radius: var(--radius-card); margin-bottom: var(--space-lg); }
 .overview-register > div, .analytics-register > div { padding: var(--space-md); border-right: 1px solid var(--color-rule); }
 .overview-register > div:last-child, .analytics-register > div:last-child { border-right: 0; }
@@ -677,7 +676,6 @@ dialog::backdrop { background: var(--color-overlay); }
 .canvas-bottom { left: 0; right: 0; bottom: 0; height: 60px; padding: var(--space-xs) var(--space-row); background: var(--color-paper); border-top: 1px solid var(--color-rule); }
 .react-flow__attribution { bottom: 0; }
 @media (max-width: 640px) { .flow-stage { display: none; } }
-.brand-mark { display: block; width: 29px; height: 29px; background: transparent; }
 .state-picker { display: none; }
 
 /* Workspace switcher and collapsible navigation */
