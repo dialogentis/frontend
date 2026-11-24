@@ -147,7 +147,16 @@ try {
   await contains('Поддержка клиентов')
   if (process.env.GRAPH_ONLY) {
     const edit = '[aria-label="Изменить Помощник"]'
+    const row = '.agent-row'
+    const background = selector => page.$eval(selector, element => getComputedStyle(element).backgroundColor)
+    await page.hover('.workspace-agents h1')
+    const idleBackground = await background(row)
+    await page.hover('.agent-row-link')
+    const hoverBackground = await background(row)
+    assert.notEqual(hoverBackground, idleBackground)
     await page.hover(edit)
+    assert.equal(await background(row), hoverBackground)
+    await page.waitForFunction(selector => getComputedStyle(document.querySelector(selector)).backgroundColor !== 'rgba(0, 0, 0, 0)', {}, edit)
     await page.waitForSelector('.agent-action-hint', { visible: true })
     assert.equal(await page.$eval('.agent-action-hint', hint => hint.textContent), 'Изменить название и описание')
     await page.keyboard.press('Escape')

@@ -728,9 +728,7 @@ dialog::backdrop { background: var(--color-overlay); }
 .organization-row:hover { background: var(--color-paper); }
 .organization-row > div { flex: 1; min-width: 0; }
 .agent-row { align-items: stretch; gap: 0; padding: 0; }
-.agent-row:hover { background: transparent; }
 .agent-row-link { display: flex; align-items: center; gap: var(--space-md); flex: 1; min-width: 0; padding: var(--space-md); border-radius: inherit; }
-.agent-row-link:hover { background: var(--color-paper); }
 .agent-row-link:focus-visible { outline-offset: -2px; }
 .agent-row-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .agent-row-slug { margin-inline-start: var(--space-2xs); }
