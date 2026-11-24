@@ -231,7 +231,7 @@ export function WorkspaceAgents({ orgId, role }: { orgId: string; role: Role }) 
       {decision?.kind === 'discard' && <>
         <h2 id="agent-action-title">Есть несохранённые изменения</h2>
         <p>Сохраните или отбросьте правки, прежде чем продолжить.</p>
-        <div className="dialog-actions agent-dialog-actions">
+        <div className="dialog-actions">
           <button type="button" className="button button-quiet" autoFocus onClick={stay}>Остаться</button>
           <button type="button" className="button button-quiet" onClick={() => { closeDialog(); closeForm(); decision.proceed() }}>Отбросить изменения</button>
           <button type="button" className="button button-primary" onClick={() => { closeDialog(); void save(decision.proceed, decision.stay) }}>Сохранить и продолжить</button>
@@ -240,7 +240,7 @@ export function WorkspaceAgents({ orgId, role }: { orgId: string; role: Role }) 
       {decision?.kind === 'archive' && <>
         <h2 id="agent-action-title">Переместить в архив?</h2>
         <p>Новые диалоги с агентом «{decision.agent.name}» перестанут запускаться. Уже начатые продолжатся.</p>
-        <div className="dialog-actions agent-dialog-actions">
+        <div className="dialog-actions">
           <button type="button" className="button button-quiet" autoFocus onClick={stay}>Отмена</button>
           <button type="button" className="button button-primary" onClick={() => { closeDialog(); void changeArchive(decision.agent) }}>Переместить в архив</button>
         </div>

@@ -15,7 +15,8 @@
   --color-accent: oklch(53% 0.15 38); --color-accent-soft: oklch(91% 0.035 45); --color-accent-ink: oklch(99.5% 0.003 82); --color-focus: oklch(50% 0.16 38);
   --font-display: "Onest Variable", ui-sans-serif, sans-serif; --font-body: "Onest Variable", ui-sans-serif, sans-serif;
   --font-outlier: "JetBrains Mono Variable", ui-monospace, monospace;
-  --radius-card: 0; --radius-pill: 0; --rule-hair: 1px; --rule-bar: 2px;
+  --radius-control: 10px; --radius-card: 18px; --radius-pill: 999px;
+  --rule-hair: 1px; --rule-bar: 2px;
   --shadow-card: 14px 14px 0 var(--color-paper-3); --shadow-card-hover: 14px 14px 0 var(--color-ink);
   --tracking-display: -0.025em; --display-weight: 700;
 }

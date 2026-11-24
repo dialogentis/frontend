@@ -182,6 +182,15 @@ try {
   await page.waitForFunction(() => location.pathname.includes('/agents/'))
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Начать редактирование'))
   if (process.env.GRAPH_ONLY) {
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('.draft-canvas')?.getBoundingClientRect()
+      const nodes = [...document.querySelectorAll('.react-flow__node')]
+      return canvas && nodes.length > 2 && nodes.every(node => {
+        const rect = node.getBoundingClientRect()
+        return rect.width > 0 && rect.left >= canvas.left && rect.right <= canvas.right
+          && rect.top >= canvas.top && rect.bottom <= canvas.bottom
+      })
+    })
     await page.focus('#agent-tab-flow')
     await page.keyboard.press('ArrowRight')
     await page.waitForFunction(() => location.pathname.endsWith('/intents'))

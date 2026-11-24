@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Background, Controls, MiniMap, Position, ReactFlow, ReactFlowProvider, useNodesInitialized, useNodesState } from '@xyflow/react'
+import { Background, Controls, MiniMap, Position, ReactFlow, ReactFlowProvider, useNodesInitialized, useNodesState, useReactFlow } from '@xyflow/react'
 import type { Connection, Node, OnDelete, OnNodesChange } from '@xyflow/react'
 import { api, ApiError, check, getCsrf } from '../api'
 import type { components } from '../api/schema'
@@ -54,6 +54,18 @@ const sections = [
 function ScenarioOverview() {
   const initialized = useNodesInitialized()
   return initialized ? <MiniMap ariaLabel="Миникарта сценария" pannable zoomable nodeColor="var(--color-muted)" maskColor="var(--color-paper-3)"/> : null
+}
+
+function FitScenario() {
+  const initialized = useNodesInitialized()
+  const { fitView, viewportInitialized } = useReactFlow()
+  const fitted = useRef(false)
+  useEffect(() => {
+    if (!initialized || !viewportInitialized || fitted.current) return
+    fitted.current = true
+    void fitView()
+  }, [initialized, viewportInitialized, fitView])
+  return null
 }
 
 export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: { orgId: string; agentId: string; userId: string; role: Role; onDirtyChange: (dirty: boolean) => void }) {
@@ -327,7 +339,8 @@ export function WorkspaceDraft({ orgId, agentId, userId, role, onDirtyChange }: 
         <button type="button" className="button button-quiet" disabled={!flowHistory.current.canRedo} onClick={() => restoreFlow('redo')}>Повторить изменение</button>
       </div>}
     </FlowValidation>
-    <ReactFlowProvider><div className="draft-editor"><div className="draft-canvas"><ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} nodesDraggable={graphEditable} nodesConnectable={graphEditable} elementsSelectable deleteKeyCode={graphEditable ? ['Backspace', 'Delete'] : null} onNodesChange={applyNodeChanges} onNodeClick={(_, node) => setSelected(node.id)} onConnect={connect} onBeforeDelete={async ({ nodes: removed }) => !removed.some(node => draft.config.flow.nodes.some(item => item.id === node.id && item.type === 'start'))} onDelete={onDelete} fitView>
+    <ReactFlowProvider><div className="draft-editor"><div className="draft-canvas"><ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} nodesDraggable={graphEditable} nodesConnectable={graphEditable} elementsSelectable deleteKeyCode={graphEditable ? ['Backspace', 'Delete'] : null} onNodesChange={applyNodeChanges} onNodeClick={(_, node) => setSelected(node.id)} onConnect={connect} onBeforeDelete={async ({ nodes: removed }) => !removed.some(node => draft.config.flow.nodes.some(item => item.id === node.id && item.type === 'start'))} onDelete={onDelete}>
+      <FitScenario/>
       <Background/>
       <Controls/>
     </ReactFlow></div><aside ref={inspectorRef} tabIndex={-1} aria-label="Настройки блока" className="draft-inspector">{!narrow && <div className="draft-overview"><ScenarioOverview/></div>}{current ? <><h2>{names[current.type]}</h2><p className="field-help">{current.id}</p>{current.type === 'switch_intent' && <SwitchInspector node={current} flow={draft.config.flow} intents={intents} names={names} editable={graphEditable} onChange={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'ask_slot' && <AskInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} entities={draft.config.entities as unknown as components['schemas']['Entity'][]} names={names} editable={graphEditable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'set_slot' && <SetSlotInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={graphEditable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'http_action' && <HttpActionInspector key={current.id} orgId={orgId} node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={graphEditable} onConfig={patch => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, ...patch } } : node) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'handoff' && <HandoffInspector key={current.id} orgId={orgId} agentId={agentId} node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={graphEditable} onConfig={patch => updateHandoff(current.id, patch)} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {current.type === 'return' && <ReturnInspector node={current} slots={draft.config.slots as unknown as SlotSummary[]} editable={graphEditable} onConfig={patch => updateHandoff(current.id, patch)}/>} {current.type === 'condition' && <ConditionInspector node={current} flow={draft.config.flow} slots={draft.config.slots as unknown as SlotSummary[]} names={names} editable={graphEditable} onBranches={branches => edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, branches } } : node), edges: config.flow.edges.filter(edge => edge.source !== current.id || edge.source_handle === 'else' || branches.some(branch => branch.id === edge.source_handle)) } }))} onTarget={(handle, target) => setBranch(current.id, handle, target)}/>} {['say', 'fallback', 'end'].includes(current.type) && <label className="field-label">{current.type === 'end' ? 'Текст завершения' : 'Текст ответа'}<textarea name="draft_node_text" rows={5} maxLength={4000} disabled={!graphEditable} value={typeof current.config.text === 'string' ? current.config.text : ''} onChange={event => { const text = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, text } } : node) } })) }}/><span className="field-help">Параметр в тексте: <code>{'{{client_name}}'}</code>.</span></label>}{current.type === 'fallback' && <label className="field-label">Пример допустимого запроса<input name="fallback_example" maxLength={500} disabled={!graphEditable} value={typeof current.config.example === 'string' ? current.config.example : ''} onChange={event => { const example = event.target.value; edit(config => ({ ...config, flow: { ...config.flow, nodes: config.flow.nodes.map(node => node.id === current.id ? { ...node, config: { ...node.config, example } } : node) } })) }}/><span className="field-help">Агент предложит пример после нескольких неудачных попыток.</span></label>}</> : <p className="muted">Выберите блок на схеме.</p>}</aside></div></ReactFlowProvider></div>}
