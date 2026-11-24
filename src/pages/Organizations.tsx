@@ -56,6 +56,7 @@ export function WorkspacePage() {
   const { orgId, agentId } = useParams(); const { session, logout } = useSession(); const orgs = useOrganizations(); const navigate = useNavigate(); const location = useLocation(); const cache = useQueryClient(); const [error, setError] = useState(''); const [editorDirty, setEditorDirty] = useState(false); const [dark, setDark] = useState(() => document.documentElement.dataset.mode === 'dark')
   const previousOrg = useRef(orgId)
   const profile = useRef<HTMLDialogElement>(null)
+  const focusSidebarToggle = useRef(false)
   useEffect(() => {
     const previous = previousOrg.current
     previousOrg.current = orgId
@@ -70,10 +71,21 @@ export function WorkspacePage() {
   })
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
+    focusSidebarToggle.current = true
     setSidebarCollapsed(next)
     try { localStorage.setItem('dialogentis-sidebar-collapsed', String(next)) } catch { /* Preference stays in this tab. */ }
   }
   const sidebarLabel = sidebarCollapsed ? 'Развернуть боковую панель' : 'Свернуть боковую панель'
+  const sidebarToggle = <button type="button" className="button icon-button desktop-sidebar-toggle"
+    aria-label={sidebarLabel} title={sidebarLabel} aria-controls="workspace-sidebar" aria-expanded={!sidebarCollapsed}
+    ref={button => {
+      if (!button || !focusSidebarToggle.current) return
+      focusSidebarToggle.current = false
+      button.focus()
+    }}
+    onClick={toggleSidebar}>
+    {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true"/> : <PanelLeftClose size={18} aria-hidden="true"/>}
+  </button>
   if (orgs.isLoading) return <div className="auth-state" role="status">Загрузка пространства…</div>
   if (orgs.isError) return <div className="auth-state"><h1>Не удалось загрузить пространство</h1><button className="button button-quiet" onClick={() => orgs.refetch()}>Повторить</button></div>
   const current = orgs.data?.find(o => o.id === orgId)
@@ -103,7 +115,10 @@ export function WorkspacePage() {
     { suffix: '/settings', label: 'Настройки', icon: Settings2, active: settingsPage },
   ]
   return <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}><aside id="workspace-sidebar" className="sidebar workspace-real-sidebar">
-    <Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link>
+    <div className="sidebar-heading">
+      <Link to="/app/organizations" className="wordmark"><img className="brand-mark" src="/icon.svg" alt=""/>dialogentis<span className="brand-punctuation">/</span></Link>
+      {!sidebarCollapsed && sidebarToggle}
+    </div>
     <WorkspaceSwitcher {...switcher}/>
     <nav className="primary-nav" aria-label="Основная навигация">
       {links.map(({ suffix, label, icon: Icon, active }) => <Link key={suffix} to={root + suffix}
@@ -119,9 +134,7 @@ export function WorkspacePage() {
       </button>
     </div>
   </aside><div className="workspace-shell"><header className="topbar"><div className="breadcrumbs">
-    <button type="button" className="button icon-button desktop-sidebar-toggle" aria-label={sidebarLabel} title={sidebarLabel} aria-controls="workspace-sidebar" aria-expanded={!sidebarCollapsed} onClick={toggleSidebar}>
-      {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true"/> : <PanelLeftClose size={18} aria-hidden="true"/>}
-    </button>
+    {sidebarCollapsed && sidebarToggle}
     <Link to="/app/organizations">Пространства</Link><span className="breadcrumb-divider">/</span>
     <WorkspaceSwitcher {...switcher} compact/>
     <Link className="workspace-overview-link" to={`${root}/overview`} title="Обзор пространства" aria-label={`Обзор пространства: ${current.name}`}><span>{current.name}</span><LayoutDashboard size={17} aria-hidden="true"/></Link>

@@ -228,17 +228,24 @@ try {
     await page.click('.workspace-draft .export-menu > summary')
     await page.setViewport({ width: 1280, height: 800 })
     await click('Сценарий')
-    const sidebarToggle = '.topbar button[aria-controls="workspace-sidebar"]'
+    const sidebarToggle = 'button[aria-controls="workspace-sidebar"]'
+    const collapse = `.sidebar-heading ${sidebarToggle}[aria-expanded="true"]`
+    const expand = `.topbar ${sidebarToggle}[aria-expanded="false"]`
     const expandedWidth = await page.$eval('.workspace-shell', element => element.clientWidth)
-    await page.focus(sidebarToggle)
+    assert.ok(await page.$eval(collapse, button => {
+      const logo = button.previousElementSibling.getBoundingClientRect()
+      const toggle = button.getBoundingClientRect()
+      return logo.right <= toggle.left && logo.top <= toggle.top && logo.bottom >= toggle.bottom
+    }))
+    await page.focus(collapse)
     await page.keyboard.press('Enter')
-    await page.waitForSelector(`${sidebarToggle}[aria-expanded="false"]`)
+    await page.waitForSelector(`${expand}:focus`)
     assert.ok(await page.$eval('.workspace-shell', (element, previous) => element.clientWidth > previous, expandedWidth))
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await page.waitForSelector(`${sidebarToggle}[aria-expanded="false"]`)
-    await page.focus(sidebarToggle)
+    await page.waitForSelector(expand)
+    await page.focus(expand)
     await page.keyboard.press('Enter')
-    await page.waitForSelector(`${sidebarToggle}[aria-expanded="true"]`)
+    await page.waitForSelector(`${collapse}:focus`)
     assert.equal(await page.$eval('#workspace-sidebar', element => getComputedStyle(element).visibility), 'visible')
     await page.focus('[aria-label="Включить тёмную тему"]')
     await page.keyboard.press('Enter')

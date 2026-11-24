@@ -100,7 +100,8 @@ input:not([type="checkbox"], [type="radio"], [type="range"]), textarea, select, 
 .skip-link:focus-visible { transform: translateY(0); }
 .app-shell { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); max-width: var(--app-max-width); margin-inline: auto; min-height: 100dvh; background: var(--color-plate); }
 .sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; background: var(--color-paper); border-right: 1px solid var(--color-rule); padding: var(--space-md) var(--space-sm) 0; z-index: var(--z-sticky); min-width: 0; }
-.wordmark { display: flex; align-items: center; gap: var(--space-xs); padding: 0 var(--space-xs); height: 36px; margin-bottom: var(--space-md); font-weight: 700; letter-spacing: -.04em; font-size: 21px; }
+.sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2xs); margin-bottom: var(--space-md); }
+.wordmark { display: flex; align-items: center; gap: var(--space-xs); padding-inline-start: var(--space-xs); height: 36px; font-weight: 700; letter-spacing: -.04em; font-size: 21px; }
 .brand-mark { display: flex; align-items: center; justify-content: center; width: 26px; height: 29px; background: var(--color-ink); color: var(--color-paper); font-size: 24px; line-height: 1; font-weight: 500; }
 .brand-punctuation { color: var(--color-accent); margin-left: calc(-1 * var(--space-2xs)); }
 .org-switch { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-sm) var(--space-xs); margin-bottom: var(--space-lg); border: 1px solid var(--color-rule); background: var(--color-plate); min-width: 0; }
@@ -688,7 +689,9 @@ dialog::backdrop { background: var(--color-overlay); }
 .org-copy > span { font-size: 11px; line-height: 1.3; }
 .org-copy strong { font-size: 12px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
 .org-copy::after { display: none; }
-.desktop-sidebar-toggle { display: inline-flex; flex-shrink: 0; }
+.desktop-sidebar-toggle { display: inline-flex; flex-shrink: 0; color: var(--color-muted); }
+.desktop-sidebar-toggle:hover { color: var(--color-ink); }
+.sidebar-heading .desktop-sidebar-toggle { width: 32px; min-width: 32px; min-height: 32px; }
 .topbar .breadcrumbs { margin-right: auto; }
 @media (min-width: 961px) {
   .app-shell.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
